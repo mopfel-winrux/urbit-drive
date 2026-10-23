@@ -97,6 +97,7 @@ type Follower struct {
 	keyBone uint64
 	keyQ    []string // fids asked for on keyBone, in order
 	upKid   uint64
+	recent  *activity // file events, for the tray
 }
 
 // New makes a follower; pass its Helpers() to mesa.Open with it as the
@@ -320,6 +321,7 @@ func (f *Follower) takeResult(n *mesa.Node, r *proto.Result) {
 		if fo.pending == nil || fo.pending.Cid != r.Cid {
 			continue
 		}
+		f.settleCommit(fo, r.Cid, r.Err == "")
 		if r.Err != "" {
 			f.cfg.Log("commit to %q failed: %s", fo.name, r.Err)
 			fo.pending = nil
@@ -502,10 +504,15 @@ func (f *Follower) fetchChunks(fo *folder, k *shutKey, w *proto.Wave) {
 		if op.New == nil || !f.wanted(fo, op.Path) || f.matchesDisk(fo, op.Path, op.New.Hash) {
 			continue
 		}
+		var mine []chunk.Hash
 		for _, h := range op.New.Chunks {
-			if !need[h] && !f.haveChunk(h) {
+			if !f.haveChunk(h) {
+				mine = append(mine, h)
 				need[h] = true
 			}
+		}
+		if len(mine) > 0 && w.Author != f.n.Ship() {
+			f.expect(f.note(fo, op.Path, Downloading, int64(op.New.Size)), mine, nil)
 		}
 	}
 	if len(need) == 0 {
@@ -525,6 +532,8 @@ func (f *Follower) fetchChunks(fo *folder, k *shutKey, w *proto.Wave) {
 			} else if err := os.WriteFile(filepath.Join(f.cacheDir(), h.String()), data, 0o600); err != nil {
 				f.cfg.Log("cache: %v", err)
 				failed = true
+			} else {
+				f.moved(h, int64(len(data)))
 			}
 			fo.waitingChunks--
 			if fo.waitingChunks > 0 {
@@ -577,6 +586,7 @@ func (f *Follower) Peek(n *mesa.Node, her *mesa.Ship, path string) (string, mesa
 	if f.db.QueryRowContext(bg, `SELECT data FROM drive_staged WHERE hash = ?`, h[:]).Scan(&data) != nil {
 		return "", nil, false
 	}
+	f.moved(h, int64(len(data)))
 	return "noun", mesa.Tuple(uint64(len(data)), data), true
 }
 

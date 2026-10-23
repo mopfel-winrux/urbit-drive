@@ -29,6 +29,14 @@ var (
 	iconOff  = trayIcon(icon.Off)
 )
 
+// glyphIcon is a file row's state glyph, for a menu item.
+func glyphIcon(kind string) []byte {
+	if runtime.GOOS == "windows" {
+		return icon.WrapICO([]int{16}, [][]byte{icon.GlyphPNG(kind, 16)})
+	}
+	return icon.GlyphPNG(kind, 32)
+}
+
 func trayIcon(c icon.Style) []byte {
 	if runtime.GOOS == "windows" {
 		return icon.ICO([]int{16, 24, 32}, c)

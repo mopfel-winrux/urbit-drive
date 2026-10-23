@@ -184,6 +184,11 @@ func ICO(sizes []int, s Style) []byte {
 	for i, n := range sizes {
 		pngs[i] = PNG(s, n)
 	}
+	return WrapICO(sizes, pngs)
+}
+
+// WrapICO puts PNGs (pngs[i] is sizes[i]×sizes[i]) in an ICO container.
+func WrapICO(sizes []int, pngs [][]byte) []byte {
 	var b bytes.Buffer
 	binary.Write(&b, binary.LittleEndian, [3]uint16{0, 1, uint16(len(sizes))}) // reserved, icon, count
 	off := uint32(6 + 16*len(sizes))

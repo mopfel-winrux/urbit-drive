@@ -103,6 +103,33 @@
         ==
     ==
   ::
+  ::  +activity: one wave as a change in the feed
+  ::
+  ++  activity
+    |=  [=fid:drive name=@t by=@t f=folder:drive w=wave:drive]
+    ^-  json
+    %-  pairs
+    :~  fid+s+fid
+        folder+s+name
+        aeon+(numb aeon.w)
+        when+(time when.w)
+        who+s+(scot %p author.w)
+        by+s+by
+      ::
+        :-  %ops
+        :-  %a
+        %+  turn  ops.w
+        |=  o=op:drive
+        =/  replaced=?
+          %+  lien  (~(get ja old.f) path.o)
+          |=(v=version:drive =(aeon.v aeon.w))
+        =/  kind=@t
+          ?~  new.o  'deleted'
+          ?:  =('/' (rsh [3 (sub (met 3 path.o) 1)] path.o))  'folder'
+          ?:(replaced 'edited' 'added')
+        (pairs ~[path+s+path.o kind+s+kind])
+    ==
+  ::
   ++  invite
     |=  [[host=@p =fid:drive] i=invite:drive]
     ^-  json
@@ -180,6 +207,23 @@
         %restore
       =/  [=fid:drive p=@t h=@t]  ((ot fid+so path+so hash+so ~) val)
       [%restore fid p (rash h hex)]
+    ::
+        %put
+      =/  [=fid:drive p=@t h=@t z=@ud m=@da cs=(list @t)]
+        ((ot fid+so path+so hash+so size+ni mtime+di chunks+(ar so) ~) val)
+      [%put fid p [(rash h hex) z m | (turn cs |=(c=@t (rash c hex)))]]
+    ::
+        %del
+      =/  [=fid:drive p=@t]  ((ot fid+so path+so ~) val)
+      [%del fid p]
+    ::
+        %mv
+      =/  [=fid:drive a=@t b=@t]  ((ot fid+so from+so to+so ~) val)
+      [%mv fid a b]
+    ::
+        %mkdir
+      =/  [=fid:drive p=@t]  ((ot fid+so path+so ~) val)
+      [%mkdir fid p]
     ::
         %share
       =/  [=fid:drive who=@t r=@t]  ((ot fid+so ship+so role+so ~) val)

@@ -1,367 +1,350 @@
-# %drive — Dropbox-style sync over mesa
+---
+name: Drive
+description: Your planet is the server. A Dropbox-style file browser for %drive, played straight.
+colors:
+  canvas: "#ffffff"
+  warm-grey: "#f7f5f2"
+  warm-grey-press: "#eeeae4"
+  selection-blue: "#e9f1ff"
+  hairline: "#e7e3dd"
+  ink: "#1e1919"
+  ink-secondary: "#6b645d"
+  ink-tertiary: "#8f877f"
+  dropbox-blue: "#0061fe"
+  dropbox-blue-hover: "#0057e4"
+  amber: "#a85d00"
+  amber-soft: "#fff3e0"
+  red: "#c4312b"
+  red-soft: "#fdecea"
+  green: "#1f7a4d"
+  icon-blue-light: "#3d8bfd"
+  icon-blue-deep: "#1f4fc4"
+typography:
+  headline:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif"
+    fontSize: "24px"
+    fontWeight: 650
+    lineHeight: 1.25
+    letterSpacing: "-0.015em"
+  title-lg:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif"
+    fontSize: "18px"
+    fontWeight: 650
+    lineHeight: 1.45
+    letterSpacing: "-0.01em"
+  title:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif"
+    fontSize: "16px"
+    fontWeight: 650
+    lineHeight: 1.45
+  body:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
+    lineHeight: 1.45
+  body-strong:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif"
+    fontSize: "14px"
+    fontWeight: 550
+    lineHeight: 1.45
+  body-sm:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
+    lineHeight: 1.45
+    fontFeature: "tnum"
+  label:
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif"
+    fontSize: "12px"
+    fontWeight: 550
+    lineHeight: 1.45
+rounded:
+  xs: "4px"
+  sm: "6px"
+  md: "8px"
+  pill: "10px"
+  lg: "12px"
+spacing:
+  "1": "4px"
+  "2": "8px"
+  "3": "12px"
+  "4": "16px"
+  "5": "20px"
+  "6": "24px"
+  "8": "32px"
+  "16": "64px"
+components:
+  button-primary:
+    backgroundColor: "{colors.dropbox-blue}"
+    textColor: "{colors.canvas}"
+    typography: "{typography.body-strong}"
+    rounded: "{rounded.md}"
+    padding: "0 14px"
+    height: "36px"
+  button-primary-hover:
+    backgroundColor: "{colors.dropbox-blue-hover}"
+    textColor: "{colors.canvas}"
+  button-secondary:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-strong}"
+    rounded: "{rounded.md}"
+    padding: "0 14px"
+    height: "36px"
+  button-secondary-hover:
+    backgroundColor: "{colors.warm-grey}"
+  button-secondary-active:
+    backgroundColor: "{colors.warm-grey-press}"
+  button-danger:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.red}"
+    rounded: "{rounded.md}"
+    height: "36px"
+  button-danger-solid:
+    backgroundColor: "{colors.red}"
+    textColor: "{colors.canvas}"
+    rounded: "{rounded.md}"
+    height: "36px"
+  icon-button:
+    textColor: "{colors.ink-secondary}"
+    rounded: "{rounded.sm}"
+    size: "32px"
+  icon-button-hover:
+    backgroundColor: "{colors.warm-grey-press}"
+    textColor: "{colors.ink}"
+  field:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "0 10px"
+    height: "36px"
+  search:
+    backgroundColor: "{colors.warm-grey}"
+    textColor: "{colors.ink-secondary}"
+    rounded: "{rounded.md}"
+    padding: "0 12px"
+    height: "40px"
+  rail:
+    backgroundColor: "{colors.warm-grey}"
+    padding: "16px 12px"
+    width: "240px"
+  nav-item:
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "0 12px"
+    height: "40px"
+  nav-item-active:
+    backgroundColor: "{colors.warm-grey-press}"
+    textColor: "{colors.ink}"
+  file-row:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    padding: "0 8px"
+    height: "48px"
+  file-row-hover:
+    backgroundColor: "{colors.warm-grey}"
+  file-row-selected:
+    backgroundColor: "{colors.selection-blue}"
+  tag-conflict:
+    backgroundColor: "{colors.amber-soft}"
+    textColor: "{colors.amber}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    padding: "0 8px"
+    height: "20px"
+  tag-read-only:
+    backgroundColor: "{colors.warm-grey}"
+    textColor: "{colors.ink-secondary}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    padding: "0 8px"
+    height: "20px"
+  banner:
+    backgroundColor: "{colors.selection-blue}"
+    rounded: "{rounded.md}"
+    padding: "12px 16px"
+  details-panel:
+    backgroundColor: "{colors.canvas}"
+    padding: "20px"
+    width: "320px"
+  dialog:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.lg}"
+    padding: "24px"
+    width: "480px"
+  menu:
+    backgroundColor: "{colors.canvas}"
+    rounded: "{rounded.md}"
+    padding: "6px"
+  toast:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.canvas}"
+    rounded: "{rounded.md}"
+    padding: "10px 16px"
+---
 
-Status: draft 0.4, 2026-10-23. Milestones 1–3 work on fake `~zod` + `~bus`,
-and milestone 4 is done for Linux (see Milestones).
+# Design System: Drive
 
-A gall desk, `%drive`, turns a planet into a file-sync server. Native clients
-(Go, on [libmesa](https://github.com/mopfel-winrux/libmesa)) run on
-Linux/macOS/Windows as **moons of that planet** and keep a local folder in
-sync with it over mesa: pokes and subscriptions for control, remote scry for
-all bulk data. Planets share folders with each other using the same protocol
-the moons use with their planet.
+## Overview
 
-Assumptions: vere64 and large-atom storage, so loom size and atom size are
-not design constraints.
+**Creative North Star: "The Category Standard, Played Straight"**
 
-## Decisions
+Drive looks and behaves like Dropbox's web app, on purpose. The file browser is the page: a warm grey left rail with three destinations (Folders, Activity, More), a top bar carrying search, and a white work area where a breadcrumb title, a short toolbar and a hairline-ruled table of folders and files do almost all of the work. A details panel opens on the right for the selected file, with its versions and Restore. There is no invented visual world, no dashboard of device health, and no Urbit vocabulary on the surface; the craft bar is the category leader's, executed without decoration.
 
-| topic | decision |
-| --- | --- |
-| scope | one user, many devices **and** sharing with other ships |
-| storage on the planet | content-addressed chunk store + manifests + revision log in `%drive`'s state (not clay) |
-| client | Go, the libmesa cgo binding, fsnotify, system tray UI |
-| encryption | planet sees plaintext; transport is mesa (`%shut` group keys) |
-| share routing | the owner's planet hosts a folder and orders its commits; a guest planet keeps a mirror; devices only ever talk to their own planet |
-| permissions | per-member `%r` / `%rw` on each shared folder |
-| OS model | a plain folder on disk with full local copies (selective sync later); no files-on-demand |
-| history | 30 days of revisions + trash, then unreferenced chunks are deleted (configurable) |
-| desk publisher | configurable in the client; placeholder for now |
-| desk scaffold | [build-urbit-app](https://github.com/mopfel-winrux/build-urbit-app) template |
+Density is a working file manager's: 48px rows, a 14px base, one system sans, numbers in tabular figures. Colour is almost entirely neutral and slightly warm, so the single Dropbox blue reads at once as "act here" or "this is selected". Amber, red and green only ever carry state: conflict, danger and failure, and done. The same tokens run in the desktop client's local settings page, so the planet page and the computer feel like one product.
 
-## Roles
+Light and dark schemes are both first-class. Dark mode keeps the warm cast (a warm near-black canvas, warm greys) and lifts the blue to stay legible.
 
-```
-   device (moon, Go client)          planet (%drive)               other planet (%drive)
-   ┌──────────────────────┐   mesa   ┌────────────────────┐   mesa   ┌────────────────────┐
-   │ watcher + local db   │◀────────▶│ host of own folders│◀────────▶│ host of folder F   │
-   │ serves its staged    │          │ mirror of shared F │          │ (owner)            │
-   │ chunks (%shut)       │          │ serves everything  │          │                    │
-   └──────────────────────┘          │ to its moons(%shut)│          └────────────────────┘
-                                     └────────────────────┘
-```
+**Key Characteristics:**
+- White work area, warm grey rail, near-black warm ink.
+- One blue for primary actions, selection, links, folder glyphs and focus.
+- Hairline-ruled rows with checkbox selection; no cards around content.
+- One line-icon set on a 24-unit grid at a 1.75 stroke.
+- Flat at rest; shadows only on things that float.
+- Phone width: the rail slides over, the details panel takes the screen, secondary columns drop into a meta line.
 
-There is one relationship, used twice: a **follower** syncs a folder with
-its **host**. A moon follows its own planet for every folder the planet has.
-A guest planet follows the owner's planet for each folder shared with it, and
-re-hosts the mirror to its own moons. The wire protocol is identical; only
-authorization differs.
+## Colors
 
-## Data model
+A warm-neutral field with one saturated blue, plus three state colours that never decorate.
 
-```hoon
-+$  hash     @ux                       ::  sha-256 over (len, bytes), via +shay
-+$  chunk    [len=@ud dat=@]           ::  ≤ 4 MiB; content-defined boundaries
-+$  entry                              ::  a file at one revision
-  $:  =hash                            ::  hash of the whole file contents
-      size=@ud
-      mtime=@da                        ::  the writer's mtime, informational
-      exec=?                           ::  unix x bit
-      chunks=(list hash)               ::  in order
-  ==
-+$  op       [=path new=(unit entry)]  ::  ~ = delete
-+$  aeon     @ud                       ::  per-folder revision, dense from 1
-+$  wave                               ::  one committed revision, immutable
-  $:  =aeon
-      author=ship                      ::  device or guest planet that wrote it
-      when=@da
-      ops=(list op)
-  ==
-+$  folder-id  @uv                     ::  random; stable across renames
-+$  folder
-  $:  name=@t
-      host=ship                        ::  owner planet (us, or a share's owner)
-      head=aeon
-      tree=(map path entry)            ::  state at head
-      log=((mop aeon wave) lth)        ::  pruned after retention
-      members=(map ship ?(%r %rw))     ::  only when we host and share
-      epoch=@ud                        ::  coop key epoch (bumped on revoke)
-  ==
-```
+### Primary
+- **Dropbox Blue** (`{colors.dropbox-blue}`): the primary button (Upload, Download, Accept), links, the active nav icon, the active tab underline, checkbox accent, the storage meter and upload progress fill, the drop-zone dash, and the 2px focus ring. Folder glyphs are stroked in it and filled with Selection Blue. Hover darkens to **Pressed Blue** (`{colors.dropbox-blue-hover}`). In dark mode it lifts to a lighter blue, and text on it flips to a dark ink.
+- **Selection Blue** (`{colors.selection-blue}`): the background of selected rows and picker choices, the invitation banner, text selection, and the folder glyph fill.
 
-Chunks are content-defined (FastCDC, min 256 KiB / avg 1 MiB / max 4 MiB) so
-an edit in the middle of a large file re-sends only the chunks around it,
-and identical chunks across files and folders are stored once. Hashes use
-`+shay` with an explicit length, because `+shax` on an atom drops trailing
-zero bytes.
+### Tertiary (state only)
+- **Conflict Amber** (`{colors.amber}`) on **Amber Wash** (`{colors.amber-soft}`): conflicted copies. It tints the file glyph and fills the "conflicted copy" tag.
+- **Danger Red** (`{colors.red}`) on **Red Wash** (`{colors.red-soft}`): destructive actions (outline and solid danger buttons, danger menu items), failed uploads, errors, and the "deleted" verb in Activity.
+- **Done Green** (`{colors.green}`): completed uploads, "added" in Activity, the tray's synced check.
 
-## Namespace (what the host serves)
+### Neutral
+- **Canvas White** (`{colors.canvas}`): the work area, details panel, dialogs, menus, and secondary button faces.
+- **Warm Grey** (`{colors.warm-grey}`): the left rail, the resting search field, row hover, secondary button hover, the read-only tag, skeleton bars. It is the browser theme colour in light mode.
+- **Warm Grey Pressed** (`{colors.warm-grey-press}`): the active nav item, icon-button hover, button press.
+- **Hairline** (`{colors.hairline}`): every 1px rule (table rows, top bar, details divider, tabs, settings rows), button and field strokes, meter tracks, scrollbar thumbs.
+- **Ink** (`{colors.ink}`): primary text and the toast surface.
+- **Ink Secondary** (`{colors.ink-secondary}`): column headers, metadata columns, breadcrumbs, descriptions, icon buttons, generic file glyphs.
+- **Ink Tertiary** (`{colors.ink-tertiary}`): breadcrumb chevrons, empty-state glyphs, the tray's deleted glyph. Non-text only.
+- **App-icon gradient** (`{colors.icon-blue-light}` to `{colors.icon-blue-deep}`): the app tile, tray icon and the client page's logo square. It belongs to the icon, not to interface chrome.
 
-Everything a follower reads by remote scry has a path that is bound once and
-never rebound, so a relay can cache it and any holder can re-serve it. Each
-binding is a gall `%tend` at revision 1 under a coop:
+### Named Rules
+**The One Blue Rule.** Blue means action, selection, link or focus. Nothing else is blue except folder glyphs, which the category also draws in blue.
 
-```
-coop /f/<folder-id>/<epoch>
-  /f/<folder-id>/<epoch>/wave/<aeon>     -> wave
-  /f/<folder-id>/<epoch>/rock/<aeon>     -> (map path entry), every 256 aeons and on demand
-  /f/<folder-id>/<epoch>/blob/<hash>     -> chunk
-```
+**The State-Only Rule.** Amber, red and green appear only when they say something about a file or an action (conflict, danger or failure, done). Never as accents.
 
-Read as `/g/x/1/drive//1/f/<id>/<epoch>/...`. Gall asks `%drive`'s `on-peek`
-at `/c/f/<id>/<epoch>/<ship>` whether a ship may have the coop key; `%drive`
-says yes to its own moons that are registered devices and to the folder's
-members. Blobs live under each folder's coop, not in one global pool, so
-a share's key never reveals another folder's chunks. A chunk that appears in
-two folders is stored once and published under both.
+**The Warm Neutral Rule.** Greys carry a slight warm cast (`{colors.warm-grey}`, `{colors.hairline}`, `{colors.ink-secondary}`), in both schemes. Don't introduce cool slate greys.
 
-**Revocation.** Gall cannot drop a coop key yet (`%snip` is a TODO in
-gall.hoon), so removing a member bumps `epoch`. The host publishes the latest
-rock and all live blobs under the new coop (the nouns are shared, so this
-doesn't copy data), stops publishing under the old one, and tells the
-remaining followers the new epoch. The revoked member keeps what it already
-had and gets nothing new.
+## Typography
 
-**Frontier** (which aeon is the latest) isn't in the namespace, since it
-changes. Followers learn it from a gall subscription:
+**Display Font:** none (no separate display face)
+**Body Font:** system-ui (with -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif)
 
-```
-watch /v1/folders  (devices)  /v1/share/<fid>  (guests)   ;  %drive-update
-  [%hello folders=(list info) results=(list result)]  the only fact a watch starts with
-  [%folder fid name host epoch head role]             name, epoch (rekey) or role changed
-  [%head fid aeon]                                    each commit
-  [%result who cid (each aeon @t)]                    outcome of a commit
-  [%gone fid]                                         left, or unshared
-```
+**Character:** One native sans at every size, so the page sits inside the user's OS like a tool rather than a brand piece. Hierarchy comes from weight (400, 500, 550, 650) and a tight size ramp, not from a second family.
 
-A watch is answered with **one** `%hello`. Ames kicks a subscriber once
-more than five facts on its flow are unacked (`msg.cong`). An earlier
-version sent a fact per folder plus one per replayed result, and a device
-with a few failed commits got stuck kicking and resubscribing forever.
+### Hierarchy
+- **Headline** (650, 24px, 1.25, -0.015em): the folder or page title under the breadcrumb.
+- **Title Large** (650, 18px): the rail wordmark and dialog titles.
+- **Title** (650, 16px): section heads (h2), the details panel file name, empty-state heading.
+- **Body** (400, 14px, 1.45): everything by default. File names in the table are 500. Buttons, tabs and form labels are 550 (Body Strong). Sub-heads (h3) are 650 at 14px.
+- **Body Small** (400, 13px, tabular figures): details-panel facts, version rows, Activity times and sub-lists, the ship name in the top bar, error text, day headers (650).
+- **Label** (550, 12px): table column headers, tags, storage usage, the phone meta line under a file name.
 
-A follower watches afresh every time it starts. It leaves its old
-subscription, gets the `%folder` snapshot again, and reads the waves it is
-missing (or the nearest rock, if they've been pruned). A fresh watch also
-replays the `%result`s of that ship's commits, because a commit that changed
-nothing produces no wave. Starting over matters in practice: after a device
-has been offline, facts on its old flow sit in the planet's retransmit
-backoff. In testing they arrived about 90 s after the device came back,
-while a fresh watch answers in under a second. The subscription only makes
-updates arrive faster. Correctness comes from the immutable log.
+### Named Rules
+**The Tabular Figures Rule.** Sizes, times, counts and version stamps use tabular numerals so columns line up.
 
-## Writing: commits are pull-based
+**The Weight-Not-Size Rule.** Prefer a weight step (500, 550, 650) to a new size. The ramp is 12, 13, 14, 16, 18, 24 and nothing else on the planet page.
 
-A follower never pushes file contents. It publishes them and asks the host to
-read them:
+## Layout
 
-1. The follower (a moon) chunks the changed files, stores those chunks in its
-   staging area, and serves them under its own `%shut` prefix
-   `/g/x/1/drive//1/up/<hash>`. Its `ShutKey` hook gives the key only to its
-   planet (or, for a guest planet, to the folder's owner).
-2. It pokes `%drive-commit`:
-   `[cid=@uv folder=folder-id base=aeon ops=(list [path base=(unit hash) new=(unit entry)])]`.
-   `base` is the hash of the file the follower last saw at that path, used for
-   compare-and-swap.
-3. The host acks the poke once it has recorded it (`cid` makes resends
-   idempotent). It then reads every chunk it doesn't already have from the
-   follower with `%keen` (secret), checks each hash, and applies the commit.
-4. **Conflicts are settled per file on the host**, which puts all commits in
-   one order:
-   - if `base` equals the current hash, the op applies;
-   - if they differ and both sides changed contents, the incoming file is
-     written as `name (conflicted copy, ~device, 2026-10-23).ext` and the
-     current one is kept;
-   - an edit beats a concurrent delete: the edited file comes back. As in
-     clay-sync, we lean toward keeping data.
-5. The host publishes the new wave and gives `[%head id aeon]` and
-   `[%result cid %& aeon]`. The follower then pulls the wave like any other,
-   which includes any conflicted copies.
+A two-column app shell on a CSS grid: a 240px rail and the main column. The main column stacks a 64px top bar (search field up to 560px wide, ship name at the far right) over a body that splits into the scrolling content area (24px top, 32px sides, 64px bottom padding) and an optional 320px details panel behind a hairline.
 
-A guest planet with `%rw` relays its moons' commits upstream: it pokes the
-owner with the same commit, serves the chunks from its own store, and
-forwards the `%result`. A `%r` member's commits are nacked.
+Spacing sits on a 4px grid: 4, 8, 12, 16, 20, 24, 32 and 64px. Rows are 48px (`--row`); column headers 36px; buttons and fields 36px; nav items, tabs and search 40px; icon buttons 32px.
 
-## Pairing a device
+The file table is fixed-layout: a 44px checkbox column, a flexible Name column, Who can access (22%), Modified (16%), Size (11%, right-aligned) and a 52px row-menu column. Settings rows are capped at 720px. The desktop client's page is a single centred column, 640px max, 32px/24px padding.
 
-Pairing is the only step that uses HTTP. Everything after it runs over mesa.
+At 760px and below: rows grow to 52px, the rail becomes a 272px off-canvas drawer opened from a menu button, the ship name hides, content padding drops to 16px, the details panel goes full-screen, the access, modified and size columns hide and reappear as a meta line under the name, secondary toolbar buttons collapse to icons, and row menus stay visible. The upload tray spans the width.
 
-1. The user gives the client the planet's URL and `+code`. The client logs
-   in to eyre (`POST /~/login`).
-2. `GET /~/scry/drive/version.json`. On 404 the client installs the desk
-   (`docket-install` poke with `~publisher/drive`, falling back to kiln) and
-   polls until the agent answers.
-3. The client generates its moon keys **locally** (a random `ring`) and pokes
-   `%drive` with `{"pair": {"name": "<device>", "pass": "<@ux public key>"}}`.
-   The private key never leaves the device.
-4. `%drive` chooses an unused moon, passes jael
-   `[%moon who [[rift=0 life=1] %keys [1 1 pass] boot=|]]`, records the
-   device, and returns the moon's name through the poke's scry result
-   (`/~/scry/drive/pair/<nonce>.json`).
-5. The client writes its keyfile, opens a libmesa node with `Breached: true`
-   (a fresh identity), and subscribes to `/v1/folders`. The planet learned the
-   moon's keys from jael, so it first speaks classic ames to the moon.
-   libmesa's `%ahoy` moves that conversation to mesa.
-6. The eyre cookie is thrown away.
+## Elevation & Depth
 
-**Re-pairing** (store lost, reinstall) creates a new moon. Unpairing (from
-the client, or from the web UI) removes the device, and `%drive` stops
-handing the moon coop keys. Keys the moon already has stay valid until the
-epoch is bumped, so unpairing a lost device also bumps every folder's
-epoch.
+Flat by default. Depth on the page comes from tone (warm grey rail beside a white work area) and 1px hairlines, never from shadows on content. One shadow token exists, a soft two-layer ambient, and it is used only for surfaces that float above the page: dialogs, context menus, the upload progress tray, the drop-zone card, the toast, and the phone rail drawer when open. Dialogs dim the page with a warm, 40% black backdrop.
 
-**Fake ships** (development): keys are derived from ship names, so the agent
-registers fake keys for the moon and the client uses `FakeIdentity(moon)`.
+### Shadow Vocabulary
+- **Float** (`box-shadow: 0 2px 6px rgb(30 25 25 / 0.08), 0 12px 32px rgb(30 25 25 / 0.12)`; dark: `0 2px 6px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.45)`): anything that floats over the page.
 
-## Sharing (milestone 2, implemented)
+### Named Rules
+**The Float-Only Rule.** A shadow means "this is above the page and will go away". Rows, panels, banners and the rail never cast one.
 
-- The owner pokes its own `%drive` `[%share id ~guest %rw]`. `%drive` adds the
-  member and pokes the guest's `%drive` with an invite
-  `[%invite id name ~owner]`.
-- The guest accepts in the web UI or the client. Its `%drive` then follows
-  `~owner` exactly as a moon would: it subscribes to `/v1/folders` on the
-  owner, filtered to what the guest can see, and reads waves and blobs with
-  `%keen` secret. It hosts the mirror to its own moons under its own coop
-  `/f/<id>/<local-epoch>`, re-publishing the same blobs it already holds.
-- For a mirrored folder, `head` and the aeon numbers are the owner's.
-  The guest only re-publishes them, so a guest's moons and the owner's moons
-  see the same history.
-- A guest device's commit goes to its own planet. The planet reads the
-  chunks, publishes them at its own `/up/<hex>` (coop `/up`, whose key goes
-  to the hosts of folders it mirrors), and pokes the owner
-  `[%relay author device-name commit]`. The owner accepts it only from a
-  `%rw` member, for itself or one of its moons. It reads the chunks from the
-  guest's `/up` and applies the commit with the **device** as the wave's
-  author, so the device recognizes its own wave. The guest forwards the
-  `%result`.
-- `%r` members' devices learn their role from `%folder` and don't upload.
-  The planet refuses their commits anyway.
-- A mirror's local name gets ` (~owner)` appended if the guest already has a
-  folder with that name, because devices use the name as the directory.
-- Unsharing kicks the guest, pokes it `%uninvite`, and rekeys. Unpairing a
-  device rekeys every folder, mirrors included.
+## Shapes
 
-## Client
+Gently rounded, small radii. The working radius is 8px (`{rounded.md}`) for buttons, fields, search, nav items, banners, menus, pickers and the toast. Smaller things go smaller: 6px (`{rounded.sm}`) for icon buttons, menu items and the inline rename field; 4px (`{rounded.xs}`) for the focus ring, breadcrumb links and inline code. Floating containers go larger: 12px (`{rounded.lg}`) for dialogs, the upload tray and the drop card. Tags are pills (`{rounded.pill}` on a 20px height). Meters and progress bars are 3 to 4px tall with 2px ends.
 
-```
-client/
-  cmd/drive/          entry point: tray app, or `drive daemon|pair|status`
-  internal/pair/      eyre login, desk install, moon key generation
-  internal/sync/      the follower: subscriptions, wave pulls, commit pushes
-  internal/scan/      fsnotify watcher, debounced like clay-sync's (100 ms quiet,
-                      1 s cap, 300 ms delete grace), plus a periodic full sweep
-  internal/chunk/     FastCDC + sha-256
-  internal/store/     SQLite tables beside libmesa's (one database)
-  internal/ui/        system tray
-```
+Icons are line drawings on a 24-unit grid with round caps and joins: a 1.75 stroke at 20px in chrome, 1.5 at 24px in rows, 1.25 at 40 to 48px. The folder silhouette (a tab at the upper left, 1.5-unit corners) recurs in the folder, shared folder, new folder and move icons and in the app tile. The app tile is a 256-unit rounded square (56-unit corners) with a diagonal blue gradient, a white folder and two circular sync arrows.
 
-**Local state** lives in the same SQLite database as the node, so applying
-a wave and acking the fact that announced it happen in one transaction:
+## Components
 
-- `files(folder, path, hash, size, mtime_ns, inode, aeon)`: the last version
-  we synced, the base for compare-and-swap, and how a local edit is detected
-  (a cheap mtime/size/inode check, then a hash).
-- `staged(hash, data)`: chunks of commits not yet applied, so they stay
-  servable even if the file changes before the planet reads them. They're
-  deleted when the `%result` arrives.
-- `pending(cid, folder, body)`: commits sent and waiting for their result.
+### Buttons
+Plain, confident, category-standard.
+- **Shape:** gently rounded (8px), 36px tall, 14px side padding, an 18px icon before the label with an 8px gap.
+- **Primary:** Dropbox Blue face and border, white label at 550. One per toolbar (Upload, Download, Accept).
+- **Secondary (default):** white face, hairline border, ink label. Hover fills Warm Grey; press fills Warm Grey Pressed.
+- **Ghost:** no border or face until hover.
+- **Danger:** red label on the secondary shape; **Danger Solid** (red face, white label) only to confirm a destructive dialog.
+- **Disabled:** 50% opacity.
+- **Icon button:** 32px square, 6px radius, Ink Secondary glyph; hover fills Warm Grey Pressed and darkens to Ink.
+- **Focus:** a 2px Dropbox Blue outline, offset 2px, 4px radius, on every focusable element.
 
-**Applying a wave to disk:** write to a temporary file in the same
-directory, check its hash, then `rename`. If the local file changed since
-the last sync, this is clay-sync's don't-clobber rule:
-- someone else changed a file we edited and haven't committed: move our
-  edit aside as a conflicted copy (the next scan uploads it), then write
-  theirs;
-- our edit is already in a commit in flight: write theirs, because the
-  planet will turn ours into the conflicted copy;
-- our own wave arriving after a newer local edit: keep the edit, and
-  commit it next on top;
-- a delete arriving for a file we edited: keep the file (an edit beats a
-  delete).
+### Chips
+- **Tags:** 20px pills, 12px at 550, beside a file name. Conflict: Amber Wash with Conflict Amber text. Read-only: Warm Grey with Ink Secondary text.
 
-A device scans only once it has heard each folder's head in the current
-run, so it doesn't commit on a stale base after a restart.
+### Cards / Containers
+Content is not carded. The table, Activity list, versions list, settings rows and members list are all ruled lists separated by Hairline. The containers that do exist:
+- **Details panel:** 320px, white, a hairline on its left, 20px padding; a 40px file glyph and 16px title, a two-column facts list in 13px, actions, then Version history rows with Restore and Download.
+- **Banner (invitations):** Selection Blue, 8px radius, 12px by 16px padding, blue icon, message, then actions on the right.
+- **Dialog:** white, 12px radius, Float shadow, 480px max (16px from the screen edge on phones), 24px padding with 16px between parts, actions right-aligned in the foot.
 
-**Platforms:** the Go binding uses only libmesa's core (Go does the UDP,
-timers and HTTP), so a Windows build needs only the core's C (urcrypt subset +
-SQLite) built with `zig cc`. Sync works only through files on disk, so it's
-the same on every OS. The tray uses `fyne.io/systray`.
+### Inputs / Fields
+- **Field:** 36px, white, hairline stroke, 8px radius, 10px side padding. Focus swaps the stroke to Dropbox Blue with no glow. Number fields are 72px, right-aligned, tabular, without spinners.
+- **Search:** 40px, sits on Warm Grey with a transparent stroke and a leading search icon; on focus it turns white with a blue stroke.
+- **Checkbox:** native, 16px, blue accent.
+- **Errors:** 13px Danger Red text under the field (planet page); a Red Wash box with red text (client page).
 
-## Retention (milestone 3)
+### Navigation
+- **Rail:** Warm Grey, 16px by 12px padding. Wordmark (28px tile and "Drive" at 18px/650) on top; nav items are 40px rows with a 20px icon, 12px gap, ink at 500. Hover tints toward Warm Grey Pressed; the current page sits on Warm Grey Pressed at 650 with its icon in blue. The foot holds storage use (12px with a 4px blue meter) and "Get the desktop app".
+- **Breadcrumb:** 14px Ink Secondary links separated by 14px chevrons, above the Headline.
+- **Tabs (More):** 40px, Ink Secondary at 550 with an icon; the current tab turns Ink with a 2px blue underline sitting on the hairline.
+- **Phone:** the rail becomes a drawer that slides in over the page (200ms ease-out) with the Float shadow.
 
-- Each folder keeps waves `floor+1..head` in its log, and its tree at
-  `floor` as `base`. Every 6 hours, `prune-all` folds waves older than
-  `keep` (default 30 days; settable from the web page) into `base`, and
-  publishes `base` as `/rock/<floor>`. A follower behind the floor (a new
-  device, a device back after a long time, or a mirror) reads the rock and
-  then the waves after it. A device treats the rock as a wave from the
-  planet that deletes whatever it has that the rock doesn't.
-- Every replaced or deleted entry goes to `old` (newest first) for `keep`.
-  The web page lists them as **Trash** (paths no longer in the tree) and
-  **Earlier versions**. Any of them can be downloaded
-  (`/~/scry/drive/file/<fid>/<hash>.mime`) or restored. A restore is an
-  ordinary commit from the planet, so it works on mirrors too, by relay.
-- A chunk is live while any tree, base, live wave, version, commit in
-  flight, or pending mirror read refers to it. Pruning drops the others.
-- **Compaction through epochs.** Readers always ask for revision 1, so a
-  tombed binding can never come back at the same path. Instead, every folder
-  whose readable set changed moves to a new coop epoch (`+rekey`): what's
-  live is published under the new coop, and everything under the old one
-  is `%tomb`ed (its value replaced by a hash, freeing it). Revocation uses
-  the same move, so an old key reads nothing at all afterwards. A device
-  that sees a new epoch cancels its reads in flight and starts over with
-  the new key.
+### File table (signature)
+The page itself. A 12px/550 header row in Ink Secondary with sortable column buttons and a rotating chevron. 48px rows ruled by Hairline; hover fills Warm Grey; checked rows fill Selection Blue, and a selection bar ("n selected" plus actions) replaces the toolbar. The name cell leads with a 24px glyph: folders blue on a Selection Blue fill, files Ink Secondary, conflicted copies amber on Amber Wash. The row menu (three dots) appears on hover, selection or focus. Rename happens inline in a blue-stroked 32px field. Loading shows pulsing Warm Grey skeleton bars; empty folders show a centred 48px glyph, a Title, a 44ch line and one action.
 
-## Selective sync
+### Activity list
+Grouped under 13px/650 day headers. Each event is a three-column grid: a 24px glyph, the sentence (names in 600), and the time in 13px tabular Ink Secondary, with an optional sub-list of files whose verbs are coloured by state (added green, deleted red).
 
-A device can exclude a path (a file, or a folder and everything in it) from
-its copy of a folder: `drive exclude FOLDER PATH` or the settings page.
-Unedited local copies are removed. Excluded paths are neither downloaded nor
-scanned. Including a path again sets a **replay**: the device rereads the
-folder from its rock or its first wave, applying only ops under the included
-path, until it is back to where it was. The replay is persisted, so a crash
-mid-replay doesn't re-apply other paths' history.
+### Floating feedback
+- **Menu:** white, hairline, 8px radius, Float shadow, 6px padding, 200px minimum; 36px items with an 18px Ink Secondary icon; danger items in red; hairline separators.
+- **Upload tray:** bottom-left beside the rail, 360px, 12px radius, Float shadow; a header and rows each with a 3px progress bar in blue that turns green when done.
+- **Drop zone:** an 8% blue veil with a 2px dashed blue border and a centred white card.
+- **Toast:** bottom-centre, Ink surface with Canvas text, 8px radius; red when something failed.
 
-## Milestones
+### Tray (desktop client)
+The native menu lists recent files, each with a state glyph drawn from the same line-icon geometry and coloured by the state palette: up and down arrows in Dropbox Blue, a check in Done Green, a warning triangle in Conflict Amber, a cross in Danger Red for failures and in Ink Tertiary for deletes. The tray icon is the app tile rasterized per state.
 
-1. **Vertical slice:** done.
-2. **Sharing:** done (invites, mirrors, roles, relays, revocation).
-3. **Retention:** done (pruning, rocks, history, trash, restore, download,
-   chunk GC, storage display).
-4. **Packaging:**
-   - Linux amd64/arm64: static binaries, tarball with `install.sh` (desktop
-     entry, autostart, systemd user unit) and `.deb`. Built and tested here.
-   - macOS: libmesa cross-builds, but the tray needs the macOS SDK, so
-     macOS builds run on macOS CI runners. `Drive.app` and the dmg script
-     haven't been run yet.
-   - Windows: libmesa's core and its Go binding build for Windows (libmesa
-     10b79c6). `drive.exe` cross-compiles from Linux with `zig cc`, and the
-     release workflow ships the zip. The Inno Setup installer needs a Windows
-     runner (`WINDOWS_BUILDS=true`). Not yet run on Windows.
-   - `.github/workflows/release.yml` publishes tagged builds to
-     `mopfel-winrux/urbit-drive` releases, and signs them when the signing
-     secrets are set. It has never run on GitHub.
-   - Start-at-login toggle in the tray and the settings page; the new icon in
-     the tray, the installers and the planet tile.
+## Do's and Don'ts
 
-## Known issues
+### Do:
+- **Do** keep the file table as the page: breadcrumb, Headline, toolbar, then the table, with the details panel opening on the right.
+- **Do** use `{colors.dropbox-blue}` for exactly one primary button per toolbar or dialog, plus links, selection and focus.
+- **Do** separate rows and sections with 1px `{colors.hairline}` rules instead of boxes.
+- **Do** draw every icon from the one line-icon set (24-unit grid, round caps and joins, 1.75 stroke at 20px).
+- **Do** set sizes, times and counts in tabular figures.
+- **Do** define every colour as a token with a dark-scheme value that keeps the warm cast.
+- **Do** give every focusable element the 2px blue focus outline.
 
-- Installing from a publisher: `|install ~zod %drive` on `~bus` stalled.
-  `~zod`'s clay logged `%clay-sing-indirect-data` for `care=%y case=[%ud 1]`
-  on the `|new-desk`-made desk. It's unclear whether this is a fake-ship or
-  clay quirk. The test installed `~bus` from a local copy instead. A real
-  publisher desk needs checking before release.
-- `done` (commit results) isn't pruned yet. It's small, but it grows by one
-  entry per commit.
-- Empty directories and symlinks aren't synced.
-
-## Open questions
-
-- Large commits (an initial upload of 10k files): split into commits of at
-  most N ops / M bytes so one commit never blocks the flow for long.
-- How many chunks to read in parallel. mesa's congestion control is per
-  peer, so start with 8 outstanding `%keen`s and tune from there.
-- Does a moon's sponsor-side routing hold when the planet is behind NAT and
-  the moon is on another network? Test on the live network early in
-  milestone 2.
-
-## Running the slice
-
-```sh
-VERE=../libmesa/vere/zig-out/x86_64-linux-musl/urbit tools/boot-fakezod.sh zod 8081 ./zod
-# urbit-mcp + |new-desk %drive + |mount %drive, then:
-tools/deploy.sh ./zod drive --install
-cd client && go build -o bin/drive ./cmd/drive     # Go >= 1.26; libmesa built in ../../libmesa/libmesa
-./bin/drive pair -home /tmp/devA -dir /tmp/A -name devA -fake \
-    -url http://localhost:8081 -code lidlut-tabwed-pillex-ridrup
-./bin/drive run -home /tmp/devA        # DRIVE_DEBUG=1 for scan tracing
-./bin/drive status -home /tmp/devA
-```
+### Don't:
+- **Don't** add a second accent colour, or use amber, red or green for anything but state.
+- **Don't** put shadows on rows, panels, the rail or banners; the Float shadow is for things that float.
+- **Don't** wrap content in cards or tinted panels; the table and lists sit directly on the canvas.
+- **Don't** introduce cool slate greys or pure-neutral greys next to the warm neutrals.
+- **Don't** add a display typeface or a size outside the 12/13/14/16/18/24 ramp.
+- **Don't** lead with device sync state or Urbit vocabulary (moon, desk, galaxy) in the interface chrome.

@@ -153,6 +153,7 @@
   :_  this
   :*  [%pass /germ/up %germ /up]
       [%pass /prune %arvo %b %wait (add now.bowl prune-every)]
+      [%pass /eyre %arvo %e %connect [~ /drive-api] %drive]
       cards
   ==
 ::
@@ -168,11 +169,15 @@
   =?  cards  ?=(%1 -.ver)  [[%pass /prune %arvo %b %wait (add now.bowl prune-every)] cards]
   =?  ver  ?=(%1 -.ver)  (one-to-two ver)
   ?>  ?=(%2 -.ver)
-  [cards this(state ver)]
+  :_  this(state ver)
+  [[%pass /eyre %arvo %e %connect [~ /drive-api] %drive] cards]
 ::
 ++  on-poke
   |=  [=mark =vase]
   ^-  (quip card _this)
+  ?:  ?=(%handle-http-request mark)
+    =^  cards  state  (serve-http:hc !<([@ta inbound-request:eyre] vase))
+    [cards this]
   =/  act=action
     ?+  mark  ~|(bad-mark+mark !!)
       %drive-action  !<(action vase)
@@ -185,6 +190,9 @@
   |=  =(pole knot)
   ^-  (quip card _this)
   ?+    pole  (on-watch:def pole)
+      [%http-response @ ~]
+    ?>  =(our src):bowl
+    `this
   ::  our devices: every folder, and the results of this device's
   ::  commits (a commit that changed nothing has no wave), in one fact
   ::
@@ -233,6 +241,27 @@
       [%x %tree fid=@ ~]
     ?~  f=(~(get by folders) fid.pole)  [~ ~]
     ``json+!>((tree:enjs:lib tree.u.f))
+  ::
+  ::  the latest changes across folders, newest first
+  ::
+      [%x %activity ~]
+    =/  all=(list [=fid name=@t f=folder =wave])
+      %-  zing
+      %+  turn  ~(tap by folders)
+      |=  [=fid f=folder]
+      (turn (tap:on-log log.f) |=([a=aeon w=wave] [fid name.f f w]))
+    =/  top
+      %+  scag  100
+      (sort all |=([a=[@ @ * w=wave] b=[@ @ * w=wave]] (gth when.w.a when.w.b)))
+    :^  ~  ~  %json
+    !>  ^-  json
+    :-  %a
+    %+  turn  top
+    |=  [=fid name=@t f=folder =wave]
+    =/  by=@t
+      ?~  d=(~(get by devices) author.wave)  (scot %p author.wave)
+      name.u.d
+    (activity:enjs:lib fid name by f wave)
   ::
       [%x %old fid=@ ~]
     ?~  f=(~(get by folders) fid.pole)  [~ ~]
@@ -319,6 +348,7 @@
     [[%pass /prune %arvo %b %wait (add now.bowl prune-every)] cards]
   ::
       [%pair *]  `this
+      [%eyre ~]  `this
   ==
 ::
 ++  on-leave  on-leave:def
@@ -535,7 +565,84 @@
       %prune
     ?>  =(our src):bowl
     prune-all
+  ::
+      %put
+    ?>  =(our src):bowl
+    =/  f  (~(got by folders) fid.act)
+    ?>  (levy chunks.entry.act |=(h=hash (~(has by blobs) h)))
+    =/  cur  (bind (~(get by tree.f) path.act) |=(e=entry hash.e))
+    %^  take-commit  our.bowl  our.bowl
+    :+  'web'  (end 6 eny.bowl)
+    [fid.act head.f [path.act cur `entry.act]~]
+  ::
+      %del
+    ?>  =(our src):bowl
+    =/  f  (~(got by folders) fid.act)
+    =/  ops=(list cop)
+      %+  murn  ~(tap by tree.f)
+      |=  [p=fpath e=entry]
+      ?.  (under p path.act)  ~
+      `[p `hash.e ~]
+    ?~  ops  `state
+    (take-commit our.bowl our.bowl 'web' [(end 6 eny.bowl) fid.act head.f ops])
+  ::
+      %mv
+    ?>  =(our src):bowl
+    ?<  =(from.act to.act)
+    ?<  (under to.act from.act)                       ::  into itself
+    =/  f  (~(got by folders) fid.act)
+    =/  ops=(list cop)
+      %-  zing
+      %+  murn  ~(tap by tree.f)
+      |=  [p=fpath e=entry]
+      ^-  (unit (list cop))
+      ?.  (under p from.act)  ~
+      =/  q  (cat 3 to.act (rsh [3 (met 3 from.act)] p))
+      ?<  (~(has by tree.f) q)
+      `~[[p `hash.e ~] [q ~ `e]]
+    ?~  ops  `state
+    (take-commit our.bowl our.bowl 'web' [(end 6 eny.bowl) fid.act head.f ops])
+  ::
+      %mkdir
+    ?>  =(our src):bowl
+    =/  f  (~(got by folders) fid.act)
+    =/  p  (cat 3 path.act '/')
+    ?<  (~(has by tree.f) p)
+    =/  =entry  [`@ux`0 0 now.bowl | ~]
+    (take-commit our.bowl our.bowl 'web' [(end 6 eny.bowl) fid.act head.f [p ~ `entry]~])
   ==
+::
+::  +under: [p] is [pre], or inside the folder [pre]
+::
+++  under
+  |=  [p=fpath pre=fpath]
+  ^-  ?
+  ?|  =(p pre)
+      =((cat 3 pre '/') (end [3 +((met 3 pre))] p))
+  ==
+::  +serve-http: POST /drive-api/blob takes one upload chunk's raw bytes
+::  and answers its hash
+::
+++  serve-http
+  |=  [eid=@ta req=inbound-request:eyre]
+  ^-  (quip card _state)
+  =/  pax  /http-response/[eid]
+  =/  reply
+    |=  [code=@ud body=@t]
+    ^-  (list card)
+    :~  [%give %fact ~[pax] %http-response-header !>(`response-header:http`[code ['content-type' 'application/json']~])]
+        [%give %fact ~[pax] %http-response-data !>(`(unit octs)``(as-octs:mimes:html body))]
+        [%give %kick ~[pax] ~]
+    ==
+  ?.  authenticated.req  [(reply 403 '{"error":"log in first"}') state]
+  ?.  &(=(%'POST' method.request.req) =('/drive-api/blob' url.request.req))
+    [(reply 404 '{"error":"not found"}') state]
+  ?~  body.request.req  [(reply 400 '{"error":"empty body"}') state]
+  =/  c=chunk  [p q]:u.body.request.req
+  ?.  (lte len.c max-chunk)  [(reply 413 '{"error":"chunk too large"}') state]
+  =/  h  (hash-chunk:lib c)
+  :-  (reply 200 (crip "\{\"hash\":\"{(trip (hext:lib h))}\"}"))
+  state(blobs (~(put by blobs) h c))
 ::
 ++  new-folder
   |=  name=@t

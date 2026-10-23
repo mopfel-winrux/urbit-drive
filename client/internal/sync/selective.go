@@ -145,7 +145,7 @@ func (f *Follower) Exclude(folder, p string) error {
 			abs := filepath.Join(f.dir(fo), filepath.FromSlash(rp))
 			if fi, err := os.Lstat(abs); err == nil && statOf(fi) == st {
 				os.Remove(abs)
-				pruneDirs(filepath.Dir(abs), f.dir(fo))
+				f.pruneDirs(fo, filepath.Dir(abs))
 			}
 		}
 		q.Close()

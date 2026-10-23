@@ -1,0 +1,551 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-23T17:48:58+00:00",
+  "title": "Design System: Drive",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas White",
+        "canonical": "oklch(100.0% 0.000 90)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ],
+        "cssVar": "--bg",
+        "dark": "#1a1918"
+      },
+      "warm-grey": {
+        "role": "neutral",
+        "displayName": "Warm Grey",
+        "canonical": "oklch(97.1% 0.005 78)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262523",
+          "#43423f",
+          "#63615e",
+          "#84827f",
+          "#a6a5a2",
+          "#cbc9c6",
+          "#f0eeeb"
+        ],
+        "cssVar": "--rail / --hover (client: --soft)",
+        "dark": "#222120"
+      },
+      "warm-grey-press": {
+        "role": "neutral",
+        "displayName": "Warm Grey Pressed",
+        "canonical": "oklch(93.8% 0.009 78)",
+        "tonalRamp": [
+          "#0d0b07",
+          "#272520",
+          "#45413d",
+          "#64615c",
+          "#85827c",
+          "#a8a49f",
+          "#ccc8c3",
+          "#f2eee8"
+        ],
+        "cssVar": "--press",
+        "dark": "#33302d"
+      },
+      "selection-blue": {
+        "role": "primary",
+        "displayName": "Selection Blue",
+        "canonical": "oklch(95.6% 0.021 262)",
+        "tonalRamp": [
+          "#070b14",
+          "#20252f",
+          "#3c424d",
+          "#5b626d",
+          "#7c838f",
+          "#9ea5b2",
+          "#c2cad7",
+          "#e7effd"
+        ],
+        "cssVar": "--select / --blue-soft",
+        "dark": "#1b2b45"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(91.7% 0.009 78)",
+        "tonalRamp": [
+          "#0d0b07",
+          "#282520",
+          "#45413d",
+          "#64615b",
+          "#85827c",
+          "#a8a49f",
+          "#ccc8c3",
+          "#f2eee8"
+        ],
+        "cssVar": "--line",
+        "dark": "#34312e"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(21.9% 0.008 18)",
+        "tonalRamp": [
+          "#0e0a0a",
+          "#292424",
+          "#464040",
+          "#665f5f",
+          "#878080",
+          "#aaa3a3",
+          "#cec7c7",
+          "#f4ecec"
+        ],
+        "cssVar": "--fg",
+        "dark": "#f4f1ec"
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Ink Secondary",
+        "canonical": "oklch(50.8% 0.014 68)",
+        "tonalRamp": [
+          "#0f0a06",
+          "#2a241e",
+          "#47413a",
+          "#676059",
+          "#88817a",
+          "#aba49c",
+          "#d0c8c0",
+          "#f5ede5"
+        ],
+        "cssVar": "--fg2",
+        "dark": "#aaa39b"
+      },
+      "ink-tertiary": {
+        "role": "neutral",
+        "displayName": "Ink Tertiary",
+        "canonical": "oklch(62.8% 0.015 68)",
+        "tonalRamp": [
+          "#100a05",
+          "#2a241d",
+          "#48413a",
+          "#676058",
+          "#898179",
+          "#aca39b",
+          "#d0c7bf",
+          "#f6ede4"
+        ],
+        "cssVar": "--fg3",
+        "dark": "#8b847c"
+      },
+      "dropbox-blue": {
+        "role": "primary",
+        "displayName": "Dropbox Blue",
+        "canonical": "oklch(55.3% 0.245 261)",
+        "tonalRamp": [
+          "#080056",
+          "#00067a",
+          "#00359f",
+          "#1e59c5",
+          "#407dec",
+          "#62a1ff",
+          "#85c7ff",
+          "#a9edff"
+        ],
+        "cssVar": "--blue",
+        "dark": "#4d8dff",
+        "textOn": {
+          "light": "#ffffff",
+          "dark": "#0f1420"
+        }
+      },
+      "dropbox-blue-hover": {
+        "role": "primary",
+        "displayName": "Pressed Blue",
+        "canonical": "oklch(51.1% 0.225 261)",
+        "tonalRamp": [
+          "#080056",
+          "#00077a",
+          "#00359f",
+          "#1e59c5",
+          "#407dec",
+          "#62a1ff",
+          "#85c7ff",
+          "#a9edff"
+        ],
+        "cssVar": "--blue-hover (client: --blue-h)",
+        "dark": "#6a9fff"
+      },
+      "amber": {
+        "role": "tertiary",
+        "displayName": "Conflict Amber",
+        "canonical": "oklch(55.4% 0.130 60)",
+        "tonalRamp": [
+          "#2b0000",
+          "#4d0400",
+          "#702a00",
+          "#944b00",
+          "#b96d1f",
+          "#e09049",
+          "#ffb46e",
+          "#ffda93"
+        ],
+        "cssVar": "--amber",
+        "dark": "#f0a64a"
+      },
+      "amber-soft": {
+        "role": "tertiary",
+        "displayName": "Amber Wash",
+        "canonical": "oklch(96.9% 0.028 79)",
+        "tonalRamp": [
+          "#110a01",
+          "#2c2415",
+          "#4a4031",
+          "#6a604f",
+          "#8b8170",
+          "#afa392",
+          "#d3c8b5",
+          "#f9edda"
+        ],
+        "cssVar": "--amber-soft",
+        "dark": "#3a2a14"
+      },
+      "red": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "oklch(54.3% 0.185 28)",
+        "tonalRamp": [
+          "#3b0000",
+          "#620000",
+          "#890000",
+          "#b1201e",
+          "#d94b41",
+          "#ff7063",
+          "#ff9686",
+          "#ffbcaa"
+        ],
+        "cssVar": "--red",
+        "dark": "#ff7a72"
+      },
+      "red-soft": {
+        "role": "tertiary",
+        "displayName": "Red Wash",
+        "canonical": "oklch(95.6% 0.019 26)",
+        "tonalRamp": [
+          "#120807",
+          "#2e2220",
+          "#4c3e3d",
+          "#6c5d5c",
+          "#8d7e7d",
+          "#b1a19f",
+          "#d5c5c3",
+          "#fbeae8"
+        ],
+        "cssVar": "--red-soft",
+        "dark": "#3d1d1b"
+      },
+      "green": {
+        "role": "tertiary",
+        "displayName": "Done Green",
+        "canonical": "oklch(51.5% 0.110 157)",
+        "tonalRamp": [
+          "#001500",
+          "#00330b",
+          "#005228",
+          "#157347",
+          "#409667",
+          "#65ba89",
+          "#8adfac",
+          "#afffd1"
+        ],
+        "cssVar": "--green",
+        "dark": "#5fc792"
+      },
+      "icon-blue-light": {
+        "role": "secondary",
+        "displayName": "App-icon Blue (top-left)",
+        "canonical": "oklch(64.7% 0.186 258)",
+        "tonalRamp": [
+          "#050055",
+          "#000b79",
+          "#00379e",
+          "#075bc4",
+          "#347feb",
+          "#58a3ff",
+          "#7cc9ff",
+          "#a0efff"
+        ],
+        "cssVar": "tile.svg gradient stop 0; icon.go Idle.Bg0"
+      },
+      "icon-blue-deep": {
+        "role": "secondary",
+        "displayName": "App-icon Blue (bottom-right)",
+        "canonical": "oklch(47.3% 0.190 264)",
+        "tonalRamp": [
+          "#0a0056",
+          "#00037a",
+          "#09339f",
+          "#2857c5",
+          "#487bed",
+          "#69a0ff",
+          "#8cc5ff",
+          "#afebff"
+        ],
+        "cssVar": "tile.svg gradient stop 1; icon.go Idle.Bg1"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Folder or page title under the breadcrumb."
+      },
+      "title-lg": {
+        "displayName": "Title Large",
+        "purpose": "Rail wordmark and dialog titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section heads, details-panel file name, empty-state heading."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text; file names at 500."
+      },
+      "body-strong": {
+        "displayName": "Body Strong",
+        "purpose": "Buttons, tabs, form labels."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "Details facts, versions, Activity times, ship name, errors."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Column headers, tags, storage use, phone meta line."
+      }
+    },
+    "shadows": [
+      {
+        "name": "float",
+        "value": "0 2px 6px rgb(30 25 25 / 0.08), 0 12px 32px rgb(30 25 25 / 0.12)",
+        "dark": "0 2px 6px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.45)",
+        "purpose": "Dialogs, menus, upload tray, drop card, toast, open phone rail. Nothing else."
+      },
+      {
+        "name": "dialog-backdrop",
+        "value": "rgb(20 18 16 / 0.4)",
+        "purpose": "Warm dim behind modal dialogs."
+      }
+    ],
+    "focus": {
+      "value": "outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px",
+      "purpose": "Every focusable element."
+    },
+    "motion": [
+      {
+        "name": "drawer",
+        "value": "transform 200ms ease-out",
+        "purpose": "Phone rail sliding in."
+      },
+      {
+        "name": "progress",
+        "value": "width 200ms ease-out",
+        "purpose": "Upload progress bar fill."
+      },
+      {
+        "name": "skeleton-pulse",
+        "value": "opacity 1.2s ease-in-out infinite (50% at 0.5)",
+        "purpose": "Loading rows."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce disables all animation and transition",
+        "purpose": "Accessibility."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "760px",
+        "purpose": "Planet page: drawer rail, full-screen details, columns collapse, rows 52px."
+      },
+      {
+        "name": "client-narrow",
+        "value": "520px",
+        "purpose": "Client page header actions wrap."
+      }
+    ],
+    "layout": {
+      "railWidth": "240px",
+      "railWidthPhone": "272px",
+      "detailsWidth": "320px",
+      "topbarHeight": "64px",
+      "row": "48px",
+      "rowPhone": "52px",
+      "clientMaxWidth": "640px",
+      "settingsMaxWidth": "720px"
+    },
+    "iconography": {
+      "grid": "24 units",
+      "stroke": "1.75 at 20px; 1.5 at 24px; 1.25 at 40-48px",
+      "caps": "round",
+      "joins": "round",
+      "source": "desk/web/index.html <symbol> set; tray glyphs in client/internal/icon/glyph.go"
+    },
+    "trayIconStates": {
+      "idle": [
+        "#3d8bfd",
+        "#1f4fc4",
+        "#2a62e0"
+      ],
+      "busy": [
+        "#f59e0b",
+        "#d97706",
+        "#c26a05"
+      ],
+      "off": [
+        "#9aa3b5",
+        "#7a8496",
+        "#8a94a6"
+      ],
+      "note": "Gradient top-left, bottom-right, arrow colour (client/internal/icon/icon.go)."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one blue action per toolbar or dialog: Upload, Download, Accept.",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg class=\"ds-ic\" viewBox=\"0 0 24 24\"><path d=\"M12 16V4.5M7.5 9 12 4.5 16.5 9M5 15.5v3A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-3\"/></svg>Upload</button>",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round} .ds-btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-weight:550;cursor:pointer;white-space:nowrap} .ds-btn:hover{background:var(--hover)} .ds-btn:active{background:var(--press)} .ds-btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px} .ds-btn-primary{background:var(--blue);border-color:var(--blue);color:var(--blue-ink)} .ds-btn-primary:hover{background:var(--blue-hover);border-color:var(--blue-hover)}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default button: white face, hairline stroke, warm grey hover.",
+      "html": "<button class=\"ds-btn\"><svg class=\"ds-ic\" viewBox=\"0 0 24 24\"><path d=\"M3 6.5A1.5 1.5 0 0 1 4.5 5h4.38l2 2H19.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z\"/></svg>New folder</button>",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round} .ds-btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-weight:550;cursor:pointer;white-space:nowrap} .ds-btn:hover{background:var(--hover)} .ds-btn:active{background:var(--press)} .ds-btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px} "
+    },
+    {
+      "name": "Danger Solid Button",
+      "kind": "button",
+      "refersTo": "button-danger-solid",
+      "description": "Confirms a destructive dialog only.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Delete</button>",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-weight:550;cursor:pointer;white-space:nowrap} .ds-btn:hover{background:var(--hover)} .ds-btn:active{background:var(--press)} .ds-btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px} .ds-btn-danger{background:var(--red);border-color:var(--red);color:#fff} .ds-btn-danger:hover{filter:brightness(0.95)}"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "search",
+      "description": "Top-bar search: warm grey at rest, white with a blue stroke on focus.",
+      "html": "<label class=\"ds-search\"><svg class=\"ds-ic\" viewBox=\"0 0 24 24\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6\"/><path d=\"m15 15 5 5\"/></svg><input type=\"search\" placeholder=\"Search\"></label>",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round} .ds-search{display:flex;align-items:center;gap:8px;height:40px;max-width:360px;padding:0 12px;border-radius:var(--r);background:var(--rail);border:1px solid transparent;color:var(--fg2)} .ds-search:focus-within{background:var(--bg);border-color:var(--blue);color:var(--fg)} .ds-search input{flex:1;border:0;outline:0;background:none;font:inherit;color:inherit;min-width:0} .ds-search input::placeholder{color:var(--fg2)}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Forms and dialogs: hairline stroke, blue stroke on focus, no glow.",
+      "html": "<input class=\"ds-field\" placeholder=\"~sampel-palnet\">",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-field{height:36px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);color:var(--fg);font:inherit} .ds-field:focus{outline:0;border-color:var(--blue)}"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Warm grey rail with Folders, Activity, More; current page on the pressed grey with a blue icon.",
+      "html": "<nav class=\"ds-rail\"><a href=\"#\" aria-current=\"page\"><svg class=\"ds-ic\" viewBox=\"0 0 24 24\"><path d=\"M3 6.5A1.5 1.5 0 0 1 4.5 5h4.38l2 2H19.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z\"/></svg>Folders</a><a href=\"#\"><svg class=\"ds-ic\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M12 7.5V12l3 2\"/></svg>Activity</a><a href=\"#\"><svg class=\"ds-ic\" viewBox=\"0 0 24 24\"><circle cx=\"5.5\" cy=\"12\" r=\"1.2\"/><circle cx=\"12\" cy=\"12\" r=\"1.2\"/><circle cx=\"18.5\" cy=\"12\" r=\"1.2\"/></svg>More</a></nav>",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round} .ds-rail{display:flex;flex-direction:column;gap:2px;width:240px;padding:16px 12px;background:var(--rail)} .ds-rail .ds-ic{width:20px;height:20px} .ds-rail a{display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:var(--r);color:var(--fg);text-decoration:none;font-weight:500} .ds-rail a:hover{background:color-mix(in srgb,var(--press) 55%,var(--rail))} .ds-rail a[aria-current=page]{background:var(--press);font-weight:650} .ds-rail a[aria-current=page] .ds-ic{color:var(--blue)} .ds-rail a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}"
+    },
+    {
+      "name": "File Table",
+      "kind": "custom",
+      "refersTo": "file-row",
+      "description": "The page itself: hairline-ruled 48px rows, checkbox selection, blue folders, amber conflicts.",
+      "html": "<table class=\"ds-files\"><thead><tr><th class=\"c\"><input type=\"checkbox\"></th><th>Name</th><th>Modified</th><th class=\"r\">Size</th></tr></thead><tbody><tr><td class=\"c\"><input type=\"checkbox\"></td><td><span class=\"ds-name ds-folder\"><svg class=\"ds-ic big\" viewBox=\"0 0 24 24\"><path d=\"M3 6.5A1.5 1.5 0 0 1 4.5 5h4.38l2 2H19.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z\"/></svg>Photos</span></td><td class=\"m\">12:30 PM</td><td class=\"m r\">2 files</td></tr><tr class=\"sel\"><td class=\"c\"><input type=\"checkbox\" checked></td><td><span class=\"ds-name\"><svg class=\"ds-ic big\" viewBox=\"0 0 24 24\"><path d=\"M6.5 3h7l4 4v12.5A1.5 1.5 0 0 1 16 21H6.5A1.5 1.5 0 0 1 5 19.5v-15A1.5 1.5 0 0 1 6.5 3z\"/><path d=\"M13.5 3v4h4\"/></svg>meeting-notes.md</span></td><td class=\"m\">1:42 PM</td><td class=\"m r\">15 B</td></tr><tr><td class=\"c\"><input type=\"checkbox\"></td><td><span class=\"ds-name ds-conflict\"><svg class=\"ds-ic big\" viewBox=\"0 0 24 24\"><path d=\"M6.5 3h7l4 4v12.5A1.5 1.5 0 0 1 16 21H6.5A1.5 1.5 0 0 1 5 19.5v-15A1.5 1.5 0 0 1 6.5 3z\"/><path d=\"M13.5 3v4h4\"/></svg>hello (conflicted copy)<span class=\"ds-tag\">Conflict</span></span></td><td class=\"m\">11:48 AM</td><td class=\"m r\">20 B</td></tr></tbody></table>",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round} .ds-files{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums} .ds-files th{height:36px;text-align:left;font-size:12px;font-weight:550;color:var(--fg2);border-bottom:1px solid var(--line);padding:0 8px} .ds-files td{height:48px;padding:0 8px;border-bottom:1px solid var(--line);white-space:nowrap} .ds-files .c{width:36px} .ds-files .r{text-align:right} .ds-files .m{color:var(--fg2)} .ds-files tbody tr:hover{background:var(--hover)} .ds-files tbody tr.sel{background:var(--select)} .ds-files input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue);margin:0} .ds-name{display:flex;align-items:center;gap:12px;font-weight:500} .ds-ic.big{width:24px;height:24px;stroke-width:1.5;color:var(--fg2)} .ds-folder .ds-ic{color:var(--blue);fill:var(--blue-soft)} .ds-conflict .ds-ic{color:var(--amber);fill:var(--amber-soft)} .ds-tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:12px;font-weight:550;background:var(--amber-soft);color:var(--amber)}"
+    },
+    {
+      "name": "Conflict Tag",
+      "kind": "chip",
+      "refersTo": "tag-conflict",
+      "description": "20px pill beside a conflicted copy's name; the read-only variant uses warm grey.",
+      "html": "<span class=\"ds-tag\">Conflicted copy</span> <span class=\"ds-tag ds-ro\">Read-only</span>",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:12px;font-weight:550;background:var(--amber-soft);color:var(--amber)} .ds-tag.ds-ro{background:var(--rail);color:var(--fg2)}"
+    },
+    {
+      "name": "Context Menu",
+      "kind": "custom",
+      "refersTo": "menu",
+      "description": "Floating row menu: white, hairline, Float shadow, 36px items, red danger item.",
+      "html": "<div class=\"ds-menu\"><button><svg class=\"ds-ic\" viewBox=\"0 0 24 24\"><path d=\"M12 4.5V16M7.5 11.5 12 16l4.5-4.5M5 15.5v3A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-3\"/></svg>Download</button><button>Rename</button><hr><button class=\"danger\">Delete</button></div>",
+      "css": ":host{--bg:#fff;--rail:#f7f5f2;--hover:#f7f5f2;--press:#eeeae4;--select:#e9f1ff;--line:#e7e3dd;--fg:#1e1919;--fg2:#6b645d;--fg3:#8f877f;--blue:#0061fe;--blue-hover:#0057e4;--blue-ink:#fff;--blue-soft:#e9f1ff;--amber:#a85d00;--amber-soft:#fff3e0;--red:#c4312b;--shadow:0 2px 6px rgb(30 25 25 / 0.08),0 12px 32px rgb(30 25 25 / 0.12);--r:8px;font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;color:var(--fg)} .ds-ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round} .ds-menu{display:inline-block;min-width:200px;padding:6px;border-radius:var(--r);background:var(--bg);border:1px solid var(--line);box-shadow:var(--shadow)} .ds-menu button{all:unset;display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;height:36px;padding:0 10px;border-radius:6px;cursor:pointer;color:var(--fg)} .ds-menu button:hover,.ds-menu button:focus-visible{background:var(--hover)} .ds-menu .ds-ic{color:var(--fg2)} .ds-menu .danger{color:var(--red)} .ds-menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Category Standard, Played Straight",
+    "overview": "Drive looks and behaves like Dropbox's web app, on purpose. The file browser is the page: a warm grey left rail with three destinations (Folders, Activity, More), a top bar carrying search, and a white work area where a breadcrumb title, a short toolbar and a hairline-ruled table of folders and files do almost all of the work. A details panel opens on the right for the selected file, with its versions and Restore. There is no invented visual world, no dashboard of device health, and no Urbit vocabulary on the surface; the craft bar is the category leader's, executed without decoration.\n\nDensity is a working file manager's: 48px rows, a 14px base, one system sans, numbers in tabular figures. Colour is almost entirely neutral and slightly warm, so the single Dropbox blue reads at once as \"act here\" or \"this is selected\". Amber, red and green only ever carry state: conflict, danger and failure, and done. The same tokens run in the desktop client's local settings page, so the planet page and the computer feel like one product.\n\nLight and dark schemes are both first-class. Dark mode keeps the warm cast (a warm near-black canvas, warm greys) and lifts the blue to stay legible.",
+    "keyCharacteristics": [
+      "White work area, warm grey rail, near-black warm ink.",
+      "One blue for primary actions, selection, links, folder glyphs and focus.",
+      "Hairline-ruled rows with checkbox selection; no cards around content.",
+      "One line-icon set on a 24-unit grid at a 1.75 stroke.",
+      "Flat at rest; shadows only on things that float.",
+      "Phone width: the rail slides over, the details panel takes the screen, secondary columns drop into a meta line."
+    ],
+    "rules": [
+      {
+        "name": "The One Blue Rule",
+        "body": "Blue means action, selection, link or focus. Nothing else is blue except folder glyphs, which the category also draws in blue.",
+        "section": "colors"
+      },
+      {
+        "name": "The State-Only Rule",
+        "body": "Amber, red and green appear only when they say something about a file or an action (conflict, danger or failure, done). Never as accents.",
+        "section": "colors"
+      },
+      {
+        "name": "The Warm Neutral Rule",
+        "body": "Greys carry a slight warm cast (`{colors.warm-grey}`, `{colors.hairline}`, `{colors.ink-secondary}`), in both schemes. Don't introduce cool slate greys.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Sizes, times, counts and version stamps use tabular numerals so columns line up.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight-Not-Size Rule",
+        "body": "Prefer a weight step (500, 550, 650) to a new size. The ramp is 12, 13, 14, 16, 18, 24 and nothing else on the planet page.",
+        "section": "typography"
+      },
+      {
+        "name": "The Float-Only Rule",
+        "body": "A shadow means \"this is above the page and will go away\". Rows, panels, banners and the rail never cast one.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep the file table as the page: breadcrumb, Headline, toolbar, then the table, with the details panel opening on the right.",
+      "**Do** use `{colors.dropbox-blue}` for exactly one primary button per toolbar or dialog, plus links, selection and focus.",
+      "**Do** separate rows and sections with 1px `{colors.hairline}` rules instead of boxes.",
+      "**Do** draw every icon from the one line-icon set (24-unit grid, round caps and joins, 1.75 stroke at 20px).",
+      "**Do** set sizes, times and counts in tabular figures.",
+      "**Do** define every colour as a token with a dark-scheme value that keeps the warm cast.",
+      "**Do** give every focusable element the 2px blue focus outline."
+    ],
+    "donts": [
+      "**Don't** add a second accent colour, or use amber, red or green for anything but state.",
+      "**Don't** put shadows on rows, panels, the rail or banners; the Float shadow is for things that float.",
+      "**Don't** wrap content in cards or tinted panels; the table and lists sit directly on the canvas.",
+      "**Don't** introduce cool slate greys or pure-neutral greys next to the warm neutrals.",
+      "**Don't** add a display typeface or a size outside the 12/13/14/16/18/24 ramp.",
+      "**Don't** lead with device sync state or Urbit vocabulary (moon, desk, galaxy) in the interface chrome."
+    ]
+  }
+}

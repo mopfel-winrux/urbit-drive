@@ -80,7 +80,7 @@
 ::
 ::    from our ship (the client over eyre, or the web UI):
 ::      %pair %unpair %new-folder %share %unshare %accept %decline %leave
-::      %restore %keep %prune
+::      %restore %keep %prune %put %del %mv %mkdir
 ::    from our devices:  %commit
 ::    from a host:       %invite %uninvite
 ::    from a guest:      %relay (a guest's device's commit)
@@ -101,6 +101,13 @@
       [%restore =fid path=fpath =hash]  ::  a version of a file, as current
       [%keep keep=@dr]                  ::  how long history lasts
       [%prune ~]                        ::  prune now
+    ::  from the web page: files, as commits from our ship. Chunks of
+    ::  an upload arrive first by POST to /drive-api/blob.
+    ::
+      [%put =fid path=fpath =entry]
+      [%del =fid path=fpath]            ::  a file, or a folder and all in it
+      [%mv =fid from=fpath to=fpath]    ::  rename or move, likewise
+      [%mkdir =fid path=fpath]          ::  an empty folder: a marker "path/"
   ==
 ::  $update: facts on /v1/folders (our devices) and /v1/share/<fid>
 ::  (a folder's guests)

@@ -54,6 +54,7 @@ func statOf(fi fs.FileInfo) stat { return stat{fi.Size(), fi.ModTime().UnixNano(
 
 // validRel accepts a relative slash path that stays inside the folder.
 func validRel(p string) bool {
+	p = strings.TrimSuffix(p, "/") // a folder marker, "dir/"
 	if p == "" || strings.HasPrefix(p, "/") || strings.Contains(p, "\\") || strings.ContainsRune(p, 0) {
 		return false
 	}
@@ -90,8 +91,18 @@ func (f *Follower) matchesDisk(fo *folder, p string, h chunk.Hash) bool {
 func (f *Follower) applyWave(fo *folder, w *proto.Wave) {
 	ours := w.Author == f.n.Ship()
 	for _, op := range w.Ops {
-		if err := f.applyOp(fo, op, ours); err != nil {
+		err := f.applyOp(fo, op, ours)
+		switch {
+		case err != nil:
 			f.cfg.Log("%s/%s: %v", fo.name, op.Path, err)
+		case ours || isMarker(op.Path) || !f.wanted(fo, op.Path):
+		case op.New == nil:
+			f.note(fo, op.Path, Deleted, 0)
+		case strings.Contains(op.Path, " (conflicted copy, "):
+			f.note(fo, op.Path, Conflict, int64(op.New.Size))
+		default:
+			e := f.note(fo, op.Path, Synced, int64(op.New.Size))
+			e.Done = e.Total
 		}
 	}
 	if ours {
@@ -125,6 +136,9 @@ func (f *Follower) applyOp(fo *folder, op proto.Op, ours bool) error {
 	if fo.replaying(op.Path) {
 		return nil
 	}
+	if isMarker(op.Path) {
+		return f.applyMarker(fo, op)
+	}
 	abs := filepath.Join(f.dir(fo), filepath.FromSlash(op.Path))
 	r := f.getFile(fo.fid, op.Path)
 	fi, err := os.Lstat(abs)
@@ -148,7 +162,7 @@ func (f *Follower) applyOp(fo *folder, op proto.Op, ours bool) error {
 			if err := os.Remove(abs); err != nil {
 				return err
 			}
-			pruneDirs(filepath.Dir(abs), f.dir(fo))
+			f.pruneDirs(fo, filepath.Dir(abs))
 		}
 		return f.delFile(fo.fid, op.Path)
 	}
@@ -174,12 +188,31 @@ func (f *Follower) applyOp(fo *folder, op proto.Op, ours bool) error {
 			return err
 		}
 		f.cfg.Log("kept your edit of %s as %s", op.Path, filepath.Base(alt))
+		if rel, err := filepath.Rel(f.dir(fo), alt); err == nil {
+			f.note(fo, filepath.ToSlash(rel), Conflict, fi.Size())
+		}
 	}
 	s, err := f.writeFile(abs, e)
 	if err != nil {
 		return err
 	}
 	return f.setFile(fo.fid, op.Path, e.Hash, s)
+}
+
+// A folder marker ("dir/") is an empty folder made on the planet: it
+// exists while the directory does.
+func isMarker(p string) bool { return strings.HasSuffix(p, "/") }
+
+func (f *Follower) applyMarker(fo *folder, op proto.Op) error {
+	abs := filepath.Join(f.dir(fo), filepath.FromSlash(strings.TrimSuffix(op.Path, "/")))
+	if op.New == nil {
+		os.Remove(abs) // only if empty: files inside keep it
+		return f.delFile(fo.fid, op.Path)
+	}
+	if err := os.MkdirAll(abs, 0o755); err != nil {
+		return err
+	}
+	return f.setFile(fo.fid, op.Path, op.New.Hash, stat{})
 }
 
 func hashFile(p string) (chunk.Hash, error) {
@@ -239,9 +272,15 @@ func (f *Follower) writeFile(abs string, e *proto.Entry) (stat, error) {
 	return statOf(fi), nil
 }
 
-// pruneDirs removes empty directories from [dir] up to [root].
-func pruneDirs(dir, root string) {
+// pruneDirs removes empty directories from [dir] up to the folder's root,
+// stopping at one the planet made (a marker).
+func (f *Follower) pruneDirs(fo *folder, dir string) {
+	root := f.dir(fo)
 	for dir != root && strings.HasPrefix(dir, root) {
+		rel, _ := filepath.Rel(root, dir)
+		if f.getFile(fo.fid, filepath.ToSlash(rel)+"/").found {
+			return // an empty folder the planet keeps
+		}
 		if os.Remove(dir) != nil {
 			return
 		}
@@ -352,8 +391,16 @@ func walk(dir string, rows map[string]row, exclude []string) *scanned {
 			}
 			return nil
 		}
+		if d.IsDir() {
+			// directories are implied by their files, unless the planet
+			// made one empty (a marker)
+			if _, ok := rows[rel+"/"]; ok {
+				seen[rel+"/"] = true
+			}
+			return nil
+		}
 		if !d.Type().IsRegular() {
-			return nil // directories are implied; links aren't synced yet
+			return nil // links aren't synced yet
 		}
 		if !validRel(rel) {
 			return nil
@@ -451,6 +498,7 @@ func (f *Follower) finishScan(fo *folder, synced uint64, res *scanned) error {
 	if _, err := f.pokes.Poke(f.n, f.cfg.Planet, proto.Agent, proto.ActionMark, c.Action()); err != nil {
 		return err
 	}
+	f.noteCommit(fo, c, res.chunks)
 	f.cfg.Log("committing %d change(s) to %q", len(res.ops), fo.name)
 	return nil
 }

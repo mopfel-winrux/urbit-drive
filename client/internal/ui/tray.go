@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
 	"fyne.io/systray"
+
+	"github.com/mopfel-winrux/urbit-drive/client/internal/icon"
+	dsync "github.com/mopfel-winrux/urbit-drive/client/internal/sync"
 )
 
-const maxFolderLines = 8
+const maxFileLines = 8
 
 // RunTray shows the tray icon and menu until Quit, then stops the app.
 // It must run on the main goroutine (macOS needs the main thread).
@@ -35,16 +39,23 @@ func trayReady(a *App) {
 
 	status := systray.AddMenuItem("Starting…", "")
 	status.Disable()
-	var lines [maxFolderLines]*systray.MenuItem
+	systray.AddSeparator()
+	// the latest files: moving ones first, then what changed most recently
+	var lines [maxFileLines]*systray.MenuItem
+	var shown [maxFileLines]dsync.FileEvent
 	for i := range lines {
 		lines[i] = systray.AddMenuItem("", "")
-		lines[i].Disable()
 		lines[i].Hide()
+	}
+	icons := map[dsync.FileState][]byte{
+		dsync.Uploading: glyphIcon(icon.GlyphUp), dsync.Downloading: glyphIcon(icon.GlyphDown),
+		dsync.Synced: glyphIcon(icon.GlyphCheck), dsync.Conflict: glyphIcon(icon.GlyphConflict),
+		dsync.Failed: glyphIcon(icon.GlyphFailed), dsync.Deleted: glyphIcon(icon.GlyphDeleted),
 	}
 	systray.AddSeparator()
 	openDir := systray.AddMenuItem("Open Drive folder", "Show the synced folder")
-	openPlanet := systray.AddMenuItem("Open on planet", "%drive's page on your planet")
-	settings := systray.AddMenuItem("Settings…", "Pairing, status and reset")
+	openPlanet := systray.AddMenuItem("Open on the web", "Drive on your ship, in the browser")
+	settings := systray.AddMenuItem("Settings…", "Sign in, selective sync, start at login")
 	login := systray.AddMenuItemCheckbox("Start at login", "Start Drive when you log in", Autostart())
 	systray.AddSeparator()
 	quit := systray.AddMenuItem("Quit", "Stop syncing and quit")
@@ -54,9 +65,9 @@ func trayReady(a *App) {
 		icon, title := iconOff, "Not syncing"
 		switch {
 		case st.Pairing:
-			title = "Pairing…"
+			title = "Signing in…"
 		case !st.Paired:
-			title = "Not paired: open Settings to pair"
+			title = "Signed out: open Settings to sign in"
 		case !st.Running:
 			if st.Err != "" {
 				title = "Stopped: " + st.Err
@@ -71,13 +82,30 @@ func trayReady(a *App) {
 				}
 			}
 		}
+		up, down := 0, 0
+		for _, e := range st.Files {
+			switch e.State {
+			case dsync.Uploading:
+				up++
+			case dsync.Downloading:
+				down++
+			}
+		}
+		if st.Running && up+down > 0 {
+			icon, title = iconBusy, moving(up, down)
+		}
 		systray.SetIcon(icon)
 		systray.SetTooltip("Drive: " + title)
 		status.SetTitle(title)
 		for i, l := range lines {
-			if i < len(st.Folders) {
-				f := st.Folders[i]
-				l.SetTitle(fmt.Sprintf("%s: %s", f.Name, FolderLine(f)))
+			if i < len(st.Files) {
+				e := st.Files[i]
+				shown[i] = e
+				l.SetTitle(FileLine(e))
+				l.SetTooltip(e.Folder + "/" + e.Path)
+				if b, ok := icons[e.State]; ok {
+					l.SetIcon(b)
+				}
 				l.Show()
 			} else {
 				l.Hide()
@@ -96,6 +124,7 @@ func trayReady(a *App) {
 	}
 	refresh()
 
+	rowClicks := clicks(lines[:])
 	tick := time.NewTicker(2 * time.Second)
 	go func() {
 		defer tick.Stop()
@@ -106,6 +135,10 @@ func trayReady(a *App) {
 				return
 			case <-tick.C:
 				refresh()
+			case i := <-rowClicks:
+				if p := a.LocalPath(shown[i]); p != "" {
+					open(filepath.Dir(p))
+				}
 			case <-openDir.ClickedCh:
 				if c, err := LoadConfig(a.Home); err == nil {
 					open(c.Dir)
@@ -131,6 +164,36 @@ func trayReady(a *App) {
 			}
 		}
 	}()
+}
+
+// clicks merges the file rows' click channels into one that says which.
+func clicks(items []*systray.MenuItem) <-chan int {
+	out := make(chan int)
+	for i, it := range items {
+		go func(i int, c <-chan struct{}) {
+			for range c {
+				out <- i
+			}
+		}(i, it.ClickedCh)
+	}
+	return out
+}
+
+func moving(up, down int) string {
+	files := func(n int) string {
+		if n == 1 {
+			return "1 file"
+		}
+		return fmt.Sprintf("%d files", n)
+	}
+	switch {
+	case up > 0 && down > 0:
+		return fmt.Sprintf("Uploading %s, downloading %s…", files(up), files(down))
+	case up > 0:
+		return "Uploading " + files(up) + "…"
+	default:
+		return "Downloading " + files(down) + "…"
+	}
 }
 
 func open(target string) {

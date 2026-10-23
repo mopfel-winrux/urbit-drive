@@ -9,3 +9,5 @@ client/bin/
 .bus-cookie
 client/build/
 client/dist/
+.impeccable/review/
+.impeccable/mocks/
