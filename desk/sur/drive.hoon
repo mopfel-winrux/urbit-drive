@@ -68,6 +68,18 @@
       need=(set hash)
   ==
 +$  invite  [name=@t =role]
+::  $link: a share link, /drive-api/s/<token>, readable by anyone who has
+::  it (and its password, if set). It always shows the current files.
+::
++$  link
+  $:  =fid
+      path=fpath                       ::  a file, a folder, or '' for all
+      made=@da
+      expires=(unit @da)
+      pass=(unit [salt=@ hash=@])
+      views=@ud
+      downloads=@ud
+  ==
 ::  $device: a moon we paired, kept forever (moons are never reused)
 ::
 +$  device  [name=@t pass=@ux since=@da revoked=(unit @da)]
@@ -80,7 +92,7 @@
 ::
 ::    from our ship (the client over eyre, or the web UI):
 ::      %pair %unpair %new-folder %share %unshare %accept %decline %leave
-::      %restore %keep %prune %put %del %mv %mkdir
+::      %restore %keep %prune %put %del %mv %mkdir %link-set %link-drop
 ::    from our devices:  %commit
 ::    from a host:       %invite %uninvite
 ::    from a guest:      %relay (a guest's device's commit)
@@ -108,6 +120,12 @@
       [%del =fid path=fpath]            ::  a file, or a folder and all in it
       [%mv =fid from=fpath to=fpath]    ::  rename or move, likewise
       [%mkdir =fid path=fpath]          ::  an empty folder: a marker "path/"
+    ::  share links; the page picks the token (128 random bits, hex)
+    ::
+      $:  %link-set  token=@t  =fid  path=fpath  expires=(unit @da)
+          pass=?(%keep %none [%set p=@t])
+      ==
+      [%link-drop token=@t]
   ==
 ::  $update: facts on /v1/folders (our devices) and /v1/share/<fid>
 ::  (a folder's guests)

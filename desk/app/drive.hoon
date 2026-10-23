@@ -29,7 +29,10 @@
 ::    pokes:   %drive-action (nouns from devices and ships), %json from
 ::             the browser
 ::    watch:   /v1/folders (our devices), /v1/share/<fid> (guests)
-::    scries:  /x/version /x/state /x/tree/<fid> /x/old/<fid>
+::    Share links: /drive-api/s/<token> serves a file or folder to anyone
+::    with the link (and its password, if it has one); see +share-http.
+::
+::    scries:  /x/version /x/state /x/tree/<fid> /x/old/<fid> /x/links
 ::             /x/pair/<moon> (json), /x/file/<fid>/<hex> (mime)
 ::             /c/f/<fid>/<epoch>/<ship>, /c/up/<ship>: coop key checks
 ::
@@ -38,11 +41,9 @@
 |%
 +$  versioned-state
   $%  state-0
-      state-1
-      state-2
   ==
-+$  state-2
-  $:  %2
++$  state-0
+  $:  %0
       devices=(map ship device)
       folders=(map fid folder)
       blobs=(map hash chunk)
@@ -52,91 +53,16 @@
       invites=(map [ship fid] invite)
       upped=(set hash)                        ::  %tend'ed at /up, for hosts
       keep=@dr                                ::  how long history lasts
+      links=(map @t link)                     ::  share links, by token
+      unlocked=(map @uv [token=@t until=@da]) ::  password-unlocked visitors
   ==
-::  state-1: before retention
-::
-+$  state-1
-  $:  %1
-      devices=(map ship device)
-      folders=(map fid folder-1)
-      blobs=(map hash chunk)
-      jobs=(map [ship @uv] job)
-      want=(jug hash [ship @uv])
-      done=(map [ship @uv] (each aeon @t))
-      invites=(map [ship fid] invite)
-      upped=(set hash)
-  ==
-+$  folder-1
-  $:  name=@t
-      host=ship
-      head=aeon
-      epoch=@ud
-      tree=(map fpath entry)
-      log=((mop aeon wave) lth)
-      pub=(set hash)
-      members=(map ship role)
-      =role
-      up=(unit mirror-1)
-  ==
-+$  mirror-1  [epoch=@ud goal=aeon busy=? wave=(unit wave) need=(set hash)]
-::  state-0: before sharing
-::
-+$  state-0
-  $:  %0
-      devices=(map ship device)
-      folders=(map fid folder-0)
-      blobs=(map hash chunk)
-      jobs=(map [ship @uv] job-0)
-      want=(jug hash [ship @uv])
-      done=(map [ship @uv] (each aeon @t))
-  ==
-+$  folder-0
-  $:  name=@t
-      host=ship
-      head=aeon
-      epoch=@ud
-      tree=(map fpath entry)
-      log=((mop aeon wave) lth)
-      pub=(set hash)
-  ==
-+$  job-0  [src=ship =commit need=(set hash)]
-::
-++  zero-to-one
-  |=  s=state-0
-  ^-  state-1
-  =/  fol
-    %-  ~(run by folders.s)
-    |=  f=folder-0
-    ^-  folder-1
-    [name host head epoch tree log pub ~ %rw ~]:f
-  =/  jos
-    %-  ~(run by jobs.s)
-    |=  j=job-0
-    ^-  job
-    [src.j (scot %p src.j) commit.j need.j]
-  [%1 devices.s fol blobs.s jos want.s done.s ~ ~]
-::
-++  one-to-two
-  |=  s=state-1
-  ^-  state-2
-  =/  fol
-    %-  ~(run by folders.s)
-    |=  f=folder-1
-    ^-  folder
-    =/  up=(unit mirror)
-      ?~  up.f  ~
-      =*  m  u.up.f
-      `[epoch.m goal.m 0 busy.m wave.m ~ need.m]
-    [name.f host.f head.f epoch.f tree.f log.f pub.f members.f role.f up 0 ~ ~]
-  [%2 devices.s fol blobs.s jobs.s want.s done.s invites.s upped.s ~d30]
-::
 +$  card  card:agent:gall
 ++  on-log  ((on aeon wave) lth)
 ++  max-chunk  0x40.0000                      ::  4 MiB
 ++  prune-every  ~h6
 --
 ::
-=|  state-2
+=|  state-0
 =*  state  -
 %-  agent:dbug
 ^-  agent:gall
@@ -163,14 +89,11 @@
   |=  old=vase
   ^-  (quip card _this)
   =/  ver  !<(versioned-state old)
-  =|  cards=(list card)
-  =?  cards  ?=(%0 -.ver)  [[%pass /germ/up %germ /up] cards]
-  =?  ver  ?=(%0 -.ver)  (zero-to-one ver)
-  =?  cards  ?=(%1 -.ver)  [[%pass /prune %arvo %b %wait (add now.bowl prune-every)] cards]
-  =?  ver  ?=(%1 -.ver)  (one-to-two ver)
-  ?>  ?=(%2 -.ver)
-  :_  this(state ver)
-  [[%pass /eyre %arvo %e %connect [~ /drive-api] %drive] cards]
+  ?-    -.ver
+      %0
+    :_  this(state ver)
+    [%pass /eyre %arvo %e %connect [~ /drive-api] %drive]~
+  ==
 ::
 ++  on-poke
   |=  [=mark =vase]
@@ -191,7 +114,8 @@
   ^-  (quip card _this)
   ?+    pole  (on-watch:def pole)
       [%http-response @ ~]
-    ?>  =(our src):bowl
+    ::  eyre, for a request we answer; a share link's visitor is a guest
+    ::
     `this
   ::  our devices: every folder, and the results of this device's
   ::  commits (a commit that changed nothing has no wave), in one fact
@@ -222,7 +146,7 @@
   ^-  (unit (unit cage))
   ?+    pole  (on-peek:def pole)
       [%x %version ~]
-    ``json+!>(`json`(pairs:enjs:format ~[version+s+'0.3.0']))
+    ``json+!>(`json`(pairs:enjs:format ~[version+s+'0.4.0']))
   ::
       [%x %state ~]
     =/  bytes  (roll ~(val by blobs) |=([c=chunk n=@ud] (add n len.c)))
@@ -262,6 +186,16 @@
       ?~  d=(~(get by devices) author.wave)  (scot %p author.wave)
       name.u.d
     (activity:enjs:lib fid name by f wave)
+  ::
+      [%x %links ~]
+    :^  ~  ~  %json
+    !>  ^-  json
+    :-  %a
+    %+  turn  ~(tap by links)
+    |=  [tok=@t l=link]
+    =/  f  (~(get by folders) fid.l)
+    =/  sc  ?~(f ~ (scope u.f path.l))
+    (link:enjs:lib tok l ?~(f '' name.u.f) ?~(sc '' kind.u.sc))
   ::
       [%x %old fid=@ ~]
     ?~  f=(~(get by folders) fid.pole)  [~ ~]
@@ -603,6 +537,28 @@
     ?~  ops  `state
     (take-commit our.bowl our.bowl 'web' [(end 6 eny.bowl) fid.act head.f ops])
   ::
+      %link-set
+    ?>  =(our src):bowl
+    ?>  &(=(32 (met 3 token.act)) (levy (trip token.act) |=(c=@t ?|(&((gte c '0') (lte c '9')) &((gte c 'a') (lte c 'f'))))))
+    =/  f  (hosted fid.act)
+    ?>  ?=(^ (scope f path.act))
+    =/  old  (~(get by links) token.act)
+    ?>  |(?=(~ old) &(=(fid.u.old fid.act) =(path.u.old path.act)))
+    =/  pass=(unit [salt=@ hash=@])
+      ?-  pass.act
+        %keep  ?~(old ~ pass.u.old)
+        %none  ~
+        [%set *]  =/  salt  (end 7 eny.bowl)  `[salt (hash-pass salt p.pass.act)]
+      ==
+    =/  =link
+      ?~  old  [fid.act path.act now.bowl expires.act pass 0 0]
+      u.old(expires expires.act, pass pass)
+    `state(links (~(put by links) token.act link))
+  ::
+      %link-drop
+    ?>  =(our src):bowl
+    `state(links (~(del by links) token.act))
+  ::
       %mkdir
     ?>  =(our src):bowl
     =/  f  (~(got by folders) fid.act)
@@ -634,8 +590,12 @@
         [%give %fact ~[pax] %http-response-data !>(`(unit octs)``(as-octs:mimes:html body))]
         [%give %kick ~[pax] ~]
     ==
+  =/  [base=@t qs=(list [p=@t q=@t])]  (split-url url.request.req)
+  =/  pax=(unit path)  (rush base stap)
+  ?:  ?=([~ %drive-api %s @ *] pax)
+    (share-http eid req i.t.t.u.pax t.t.t.u.pax qs)
   ?.  authenticated.req  [(reply 403 '{"error":"log in first"}') state]
-  ?.  &(=(%'POST' method.request.req) =('/drive-api/blob' url.request.req))
+  ?.  &(=(%'POST' method.request.req) =('/drive-api/blob' base))
     [(reply 404 '{"error":"not found"}') state]
   ?~  body.request.req  [(reply 400 '{"error":"empty body"}') state]
   =/  c=chunk  [p q]:u.body.request.req
@@ -643,6 +603,185 @@
   =/  h  (hash-chunk:lib c)
   :-  (reply 200 (crip "\{\"hash\":\"{(trip (hext:lib h))}\"}"))
   state(blobs (~(put by blobs) h c))
+::  +split-url: an eyre url into its path and decoded query
+::
+++  split-url
+  |=  url=@t
+  ^-  [@t (list [p=@t q=@t])]
+  =/  t  (trip url)
+  =/  i  (find "?" t)
+  ?~  i  [url ~]
+  :-  (crip (scag u.i t))
+  (fall (rush (crip (slag u.i t)) yque:de-purl:html) ~)
+::  +hash-pass: a share link's password, salted and stretched
+::
+++  hash-pass
+  |=  [salt=@ pw=@t]
+  ^-  @
+  =/  h  (shax (jam [salt pw]))
+  =/  n=@ud  0
+  |-
+  ?:  =(n 4.096)  h
+  $(n +(n), h (shax (cat 3 h salt)))
+::  +scope: what a link to [p] in [f] covers, as paths relative to it:
+::  a file is just itself; a folder ('' for all) is everything in it.
+::  ~ when nothing is there any more.
+::
+++  scope
+  |=  [f=folder p=fpath]
+  ^-  (unit [kind=?(%file %dir) es=(list [rel=@t e=entry])])
+  ?:  &(!=('' p) (~(has by tree.f) p) !=('/' (rsh [3 (sub (met 3 p) 1)] p)))
+    `[%file [(rear (rash p (more fas (cook crip (star ;~(less fas next)))))) (~(got by tree.f) p)]~]
+  =/  pre=@t  ?:(=('' p) '' (cat 3 p '/'))
+  =/  n  (met 3 pre)
+  =/  es
+    %+  murn  ~(tap by tree.f)
+    |=  [q=fpath e=entry]
+    ?.  =(pre (end [3 n] q))  ~
+    =/  rel  (rsh [3 n] q)
+    ?:(=('' rel) ~ `[rel e])
+  ?:  &(?=(~ es) !=('' p))  ~
+  `[%dir es]
+::  +share-http: a share link's page and its JSON, unlock and file routes
+::
+++  share-http
+  |=  [eid=@ta req=inbound-request:eyre tok=@t rest=path qs=(list [p=@t q=@t])]
+  ^-  (quip card _state)
+  =/  pax  /http-response/[eid]
+  =/  respond
+    |=  [code=@ud hed=(list [key=@t value=@t]) body=(unit octs)]
+    ^-  (list card)
+    =/  safe  ~[['x-content-type-options' 'nosniff'] ['referrer-policy' 'no-referrer'] ['cache-control' 'no-store']]
+    :~  [%give %fact ~[pax] %http-response-header !>(`response-header:http`[code (weld hed safe)])]
+        [%give %fact ~[pax] %http-response-data !>(body)]
+        [%give %kick ~[pax] ~]
+    ==
+  =/  jsn
+    |=  [code=@ud j=json]
+    (respond code ['content-type' 'application/json']~ `(as-octs:mimes:html (en:json:html j)))
+  =/  err
+    |=  [code=@ud msg=@t]
+    (jsn code (pairs:enjs:format ~[error+s+msg]))
+  ::  the page itself: always served; it asks /info what the link is
+  ::
+  ?~  rest
+    =/  page  .^(@t %cx /(scot %p our.bowl)/[q.byk.bowl]/(scot %da now.bowl)/web/share/html)
+    :_  state
+    (respond 200 ['content-type' 'text/html; charset=utf-8']~ `(as-octs:mimes:html page))
+  =/  lin  (~(get by links) tok)
+  =/  gone=?  |(?=(~ lin) &(?=(^ expires.u.lin) (gth now.bowl u.expires.u.lin)))
+  ?:  gone  [(err 404 'It may have expired, or whoever shared it turned it off. Ask them for a new link.') state]
+  ?>  ?=(^ lin)
+  =/  l  u.lin
+  =/  f  (~(get by folders) fid.l)
+  =/  sc  ?~(f ~ (scope u.f path.l))
+  ?~  sc  [(err 410 'The file or folder behind this link is no longer there.') state]
+  ?>  ?=(^ f)
+  =/  name=@t
+    ?:  =('' path.l)  name.u.f
+    (rear (rash path.l (more fas (cook crip (star ;~(less fas next))))))
+  ::  a password-protected link needs this visitor's unlock cookie
+  ::
+  =/  open=?
+    ?~  pass.l  &
+    =/  ck  (get-cookie req 'drive-share')
+    ?~  ck  |
+    ?~  key=(slaw %uv u.ck)  |
+    ?~  u=(~(get by unlocked) u.key)  |
+    &(=(token.u.u tok) (gth until.u.u now.bowl))
+  ?+    rest  [(err 404 'Not found.') state]
+      [%info ~]
+    =/  base=(list [@t json])
+      :~  name+s+name
+          kind+s+kind.u.sc
+          owner+s+(scot %p our.bowl)
+          locked+b+!open
+          expires+?~(expires.l ~ (time:enjs:format u.expires.l))
+      ==
+    ?.  open  [(jsn 200 (pairs:enjs:format base)) state]
+    :-  %+  jsn  200
+        %-  pairs:enjs:format
+        %+  snoc  base
+        :-  %files
+        :-  %a
+        %+  turn  es.u.sc
+        |=  [rel=@t e=entry]
+        (pairs:enjs:format ~[path+s+rel size+(numb:enjs:format size.e) mtime+(time:enjs:format mtime.e)])
+    state(links (~(put by links) tok l(views +(views.l))))
+  ::
+      [%unlock ~]
+    ?.  =(%'POST' method.request.req)  [(err 405 'Use POST.') state]
+    ?~  pass.l  [(err 400 'This link has no password.') state]
+    =/  pw=@t  ?~(body.request.req '' q.u.body.request.req)
+    ?.  =(hash.u.pass.l (hash-pass salt.u.pass.l pw))
+      [(err 403 'That password isn’t right.') state]
+    =/  key=@uv  (end 7 eny.bowl)
+    =/  cookie=@t
+      %-  crip
+      ;:  weld
+        "drive-share={(scow %uv key)}; Path=/drive-api/s/{(trip tok)}; HttpOnly; SameSite=Lax; Max-Age=86400"
+        ?:(secure.req "; Secure" "")
+      ==
+    :-  (respond 200 ~[['content-type' 'application/json'] ['set-cookie' cookie]] `(as-octs:mimes:html '{"ok":true}'))
+    state(unlocked (~(put by unlocked) key [tok (add now.bowl ~d1)]))
+  ::
+      [%file ~]
+    ?.  open  [(err 403 'This link needs its password.') state]
+    =/  want=@t  (fall (bind (find-q qs 'path') same) '')
+    =/  hit  (skim es.u.sc |=([rel=@t e=entry] =(rel want)))
+    ?~  hit  [(err 404 'That file isn’t part of this link.') state]
+    =*  e  e.i.hit
+    ?.  (levy chunks.e |=(c=hash (~(has by blobs) c)))
+      [(err 503 'This file isn’t fully on the ship yet.') state]
+    =/  dat  (can 3 (turn chunks.e |=(c=hash =+((~(got by blobs) c) [len dat]))))
+    =/  fname  (rear (rash rel.i.hit (more fas (cook crip (star ;~(less fas next))))))
+    =/  img=(unit @t)  (image-type fname)
+    =/  inline=?  &(?=(^ img) =(`'1' (find-q qs 'inline')))
+    =/  hed=(list [key=@t value=@t])
+      :~  ['content-type' ?:(inline (need img) 'application/octet-stream')]
+          ['content-disposition' (crip "{?:(inline "inline" "attachment")}; filename*=UTF-8''{(en-urlt:html (trip fname))}")]
+      ==
+    :-  (respond 200 hed `[size.e dat])
+    ?:  inline  state
+    state(links (~(put by links) tok l(downloads +(downloads.l))))
+  ==
+::
+++  find-q
+  |=  [qs=(list [p=@t q=@t]) k=@t]
+  ^-  (unit @t)
+  ?~  qs  ~
+  ?:  =(k p.i.qs)  `q.i.qs
+  $(qs t.qs)
+::
+++  get-cookie
+  |=  [req=inbound-request:eyre name=@t]
+  ^-  (unit @t)
+  =/  pre=tape  (weld (trip name) "=")
+  =/  hs  header-list.request.req
+  =|  parts=(list tape)
+  =.  parts
+    |-  ^-  (list tape)
+    ?~  hs  parts
+    ?.  =('cookie' key.i.hs)  $(hs t.hs)
+    =/  more=(list tape)  (rash value.i.hs (more mic (star ;~(less mic next))))
+    $(hs t.hs, parts (weld parts more))
+  |-  ^-  (unit @t)
+  ?~  parts  ~
+  =/  kv=tape  i.parts
+  =?  kv  &(?=(^ kv) =(' ' i.kv))  t.kv
+  ?:  =(pre (scag (lent pre) kv))  `(crip (slag (lent pre) kv))
+  $(parts t.parts)
+::
+++  image-type
+  |=  name=@t
+  ^-  (unit @t)
+  =/  t  (cass (trip name))
+  =/  ext  ?~(d=(find "." (flop t)) "" (slag (sub (lent t) u.d) t))
+  ?:  |(=(ext "png"))  `'image/png'
+  ?:  |(=(ext "jpg") =(ext "jpeg"))  `'image/jpeg'
+  ?:  =(ext "gif")  `'image/gif'
+  ?:  =(ext "webp")  `'image/webp'
+  ~
 ::
 ++  new-folder
   |=  name=@t

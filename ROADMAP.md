@@ -9,8 +9,11 @@ design these build on.
 
 1. Live-network hardening and installing from a publisher, because nothing
    else matters until other people can install it.
-2. Share links, the feature people will actually show their friends.
-3. Previews in the web app, the cheapest big jump in how finished it feels.
+2. Previews in the web app, the cheapest big jump in how finished it feels.
+
+**Done since v0.2:** share links (files, subfolders and whole folders, with
+optional expiry and password, view and download counts, a Links page, and
+"Download all" as a zip). See PROTOCOL.md, Share links.
 
 ## 1. Trustworthy
 
@@ -65,9 +68,10 @@ What a Dropbox user notices is missing.
 What a hosted sync service can't offer, because your ship is the server and
 the namespace is the transport.
 
-- **Share links for people without a ship.** A capability URL served by your
-  planet, optionally expiring or password-protected. It's Dropbox's most-used
-  feature, without a third party.
+- **Share links, further.** Done: links to files and folders, with optional
+  expiry and password. Next: links for people to upload into a folder (file
+  requests), links made by guests with edit rights, download limits, and
+  rate limiting on the ship.
 - **Share with groups.** Share a folder with a Tlon group or a list of ships,
   and access follows group membership.
 - **Folders other apps can read.** Let other Urbit apps (notes, a photo

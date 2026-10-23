@@ -130,6 +130,23 @@
         (pairs ~[path+s+path.o kind+s+kind])
     ==
   ::
+  ++  link
+    |=  [tok=@t l=link:drive folder=@t kind=@t]
+    ^-  json
+    %-  pairs
+    :~  token+s+tok
+        fid+s+fid.l
+        folder+s+folder
+        path+s+path.l
+        made+(time made.l)
+        expires+?~(expires.l ~ (time u.expires.l))
+        password+b+?=(^ pass.l)
+        views+(numb views.l)
+        downloads+(numb downloads.l)
+        kind+s+kind                    ::  'file', 'dir', or '' if it's gone
+        live+b+!=('' kind)
+    ==
+  ::
   ++  invite
     |=  [[host=@p =fid:drive] i=invite:drive]
     ^-  json
@@ -224,6 +241,22 @@
         %mkdir
       =/  [=fid:drive p=@t]  ((ot fid+so path+so ~) val)
       [%mkdir fid p]
+    ::
+    ::  {"link": {token, fid, path, expires: ms|null, password: null|""|"pw"}}
+    ::  password null keeps the current one, "" removes it
+    ::
+        %link
+      ?>  ?=([%o *] val)
+      =/  m  p.val
+      =/  get  |=(k=@t (~(got by m) k))
+      =/  exp=(unit @da)
+        =/  e  (~(gut by m) 'expires' ~)
+        ?~(e ~ `(di e))
+      =/  pw  (~(gut by m) 'password' ~)
+      =/  pass  ?~(pw %keep ?:(=(s+'' pw) %none [%set (so pw)]))
+      [%link-set (so (get 'token')) (so (get 'fid')) (so (get 'path')) exp pass]
+    ::
+      %unlink  [%link-drop (so val)]
     ::
         %share
       =/  [=fid:drive who=@t r=@t]  ((ot fid+so ship+so role+so ~) val)

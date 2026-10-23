@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Drive</title>
+<style>
+/* Drive's share page: served by the ship to anyone with the link, so
+   everything it needs is inline (the app's own files need a login). Same
+   tokens as web/style.css. */
+:root { --bg:#fff; --rail:#f7f5f2; --press:#eeeae4; --line:#e7e3dd; --fg:#1e1919; --fg2:#6b645d; --blue:#0061fe; --blue-h:#0057e4; --blue-ink:#fff; --blue-soft:#e9f1ff; --red:#c4312b; --red-soft:#fdecea; --shadow:0 2px 6px rgb(30 25 25/.08),0 12px 32px rgb(30 25 25/.12); color-scheme:light; font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1a1918; --rail:#222120; --press:#33302d; --line:#34312e; --fg:#f4f1ec; --fg2:#aaa39b; --blue:#4d8dff; --blue-h:#6a9fff; --blue-ink:#0f1420; --blue-soft:#1b2b45; --red:#ff7a72; --red-soft:#3d1d1b; --shadow:0 2px 6px rgb(0 0 0/.3),0 12px 32px rgb(0 0 0/.45); color-scheme:dark; } }
+* { box-sizing:border-box; } [hidden] { display:none !important; }
+html, body { margin:0; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased; }
+::selection { background:var(--blue-soft); } :focus-visible { outline:2px solid var(--blue); outline-offset:2px; border-radius:4px; }
+a { color:var(--blue); text-underline-offset:2px; }
+.ic { width:20px; height:20px; flex:none; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
+header { display:flex; align-items:center; gap:12px; height:64px; padding:0 24px; border-bottom:1px solid var(--line); }
+header .logo { display:flex; align-items:center; gap:10px; font-size:18px; font-weight:650; color:var(--fg); text-decoration:none; }
+header .by { margin-left:auto; color:var(--fg2); font-size:13px; }
+main { max-width:1040px; margin:0 auto; padding:32px 24px 64px; }
+.btn { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--fg); font:inherit; font-weight:550; cursor:pointer; text-decoration:none; white-space:nowrap; }
+.btn:hover { background:var(--rail); } .btn:active { background:var(--press); } .btn:disabled { opacity:.5; cursor:default; }
+.btn.primary { background:var(--blue); border-color:var(--blue); color:var(--blue-ink); } .btn.primary:hover { background:var(--blue-h); }
+.btn .ic { width:18px; height:18px; }
+.card { max-width:520px; margin:48px auto; text-align:center; }
+.card .big { width:72px; height:72px; color:var(--fg2); stroke-width:1.2; }
+.card h1 { font-size:22px; font-weight:650; margin:12px 0 4px; overflow-wrap:anywhere; }
+.card p { color:var(--fg2); margin:0 0 20px; }
+.preview { display:block; max-width:100%; max-height:60vh; margin:0 auto 24px; border-radius:8px; box-shadow:var(--shadow); }
+form.unlock { display:flex; gap:8px; max-width:360px; margin:0 auto; }
+form.unlock .btn { height:40px; }
+.field { flex:1; height:40px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); font:inherit; }
+.field:focus { outline:0; border-color:var(--blue); }
+.err { color:var(--red); margin-top:12px; }
+.crumbs { display:flex; flex-wrap:wrap; align-items:center; gap:2px; color:var(--fg2); margin-bottom:4px; }
+.crumbs a { color:var(--fg2); text-decoration:none; padding:2px 4px; border-radius:4px; } .crumbs a:hover { background:var(--rail); color:var(--fg); }
+.crumbs .ic { width:14px; height:14px; }
+.title-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:4px 0 20px; }
+.title-row h1 { font-size:24px; font-weight:650; letter-spacing:-.015em; margin:0; margin-right:auto; overflow-wrap:anywhere; }
+.sub { color:var(--fg2); margin:-12px 0 20px; }
+table { width:100%; border-collapse:collapse; table-layout:fixed; }
+th { height:36px; text-align:left; font-size:12px; font-weight:550; color:var(--fg2); border-bottom:1px solid var(--line); padding:0 8px; }
+td { height:48px; padding:0 8px; border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-variant-numeric:tabular-nums; }
+tbody tr:hover { background:var(--rail); }
+.c-mod { width:20%; color:var(--fg2); } .c-size { width:12%; color:var(--fg2); text-align:right; } .c-act { width:56px; text-align:right; }
+.name { display:flex; align-items:center; gap:12px; min-width:0; }
+.name .ic { width:24px; height:24px; color:var(--fg2); stroke-width:1.5; }
+.name .ic.folder { color:var(--blue); fill:var(--blue-soft); }
+.name a, .name span { color:var(--fg); text-decoration:none; overflow:hidden; text-overflow:ellipsis; font-weight:500; }
+.name a:hover { text-decoration:underline; }
+.icon-btn { display:inline-grid; place-items:center; width:32px; height:32px; border-radius:6px; color:var(--fg2); }
+.icon-btn:hover { background:var(--press); color:var(--fg); }
+footer { text-align:center; color:var(--fg2); font-size:13px; padding:24px; }
+.skel { height:12px; border-radius:6px; background:var(--rail); width:40%; margin:120px auto; animation:pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity:.5; } }
+@media (max-width:640px) { header { padding:0 16px; } main { padding:24px 16px 48px; } .c-mod, .c-size { display:none; } }
+@media (prefers-reduced-motion:reduce) { * { animation:none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.38l2 2H19.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M6.5 3h7l4 4v12.5A1.5 1.5 0 0 1 16 21H6.5A1.5 1.5 0 0 1 5 19.5v-15A1.5 1.5 0 0 1 6.5 3z"/><path d="M13.5 3v4h4"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4.5V16M7.5 11.5 12 16l4.5-4.5M5 15.5v3A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-3"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="1.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+<symbol id="i-gone" viewBox="0 0 24 24"><path d="M6.5 3h7l4 4v12.5A1.5 1.5 0 0 1 16 21H6.5A1.5 1.5 0 0 1 5 19.5v-15A1.5 1.5 0 0 1 6.5 3z"/><path d="m9.5 11.5 4 4M13.5 11.5l-4 4"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+</defs></svg>
+<header>
+  <span class="logo"><svg width="28" height="28" viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3d8bfd"/><stop offset="1" stop-color="#1f4fc4"/></linearGradient></defs><rect width="256" height="256" rx="56" fill="url(#bg)"/><path d="M52 86a14 14 0 0 1 14-14h42l16 16h66a14 14 0 0 1 14 14v84a14 14 0 0 1-14 14H66a14 14 0 0 1-14-14z" fill="#fff"/><g fill="none" stroke="#2a62e0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M100 146a28 28 0 0 1 48-20"/><path d="M150 112v16h-16"/><path d="M156 150a28 28 0 0 1-48 20"/><path d="M106 184v-16h16"/></g></svg>Drive</span>
+  <span class="by" id="by"></span>
+</header>
+<main id="main"><div class="skel"></div></main>
+<footer id="foot" hidden></footer>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const icon = (id, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const base = location.pathname.replace(/\/+$/, '');
+  const fileUrl = (rel, inline) => `${base}/file?path=${encodeURIComponent(rel)}${inline ? '&inline=1' : ''}`;
+  const isImage = (n) => /\.(png|jpe?g|gif|webp)$/i.test(n);
+  function size(n) { if (n < 1024) return `${n} B`; const u = ['KB', 'MB', 'GB', 'TB']; let i = -1; do { n /= 1024; i++; } while (n >= 1024 && i < 3); return `${n < 10 ? n.toFixed(1) : Math.round(n)} ${u[i]}`; }
+  const when = (ms) => new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  let info, dir = '';
+
+  function frame() {
+    $('#by').textContent = `Shared by ${info.owner}`;
+    document.title = `${info.name} · Drive`;
+    $('#foot').hidden = false;
+    $('#foot').textContent = `Shared from ${info.owner} with Drive${info.expires ? ` · this link expires ${when(info.expires)}` : ''}`;
+  }
+
+  function gone(msg) {
+    $('#main').innerHTML = `<div class="card">${icon('gone', 'big')}<h1>This link isn’t available</h1><p>${esc(msg)}</p></div>`;
+  }
+
+  function locked() {
+    frame();
+    $('#main').innerHTML = `<div class="card">${icon('lock', 'big')}<h1>This link is protected</h1><p>Enter the password to see ${esc(info.name)}.</p>
+      <form class="unlock"><input class="field" type="password" name="pw" placeholder="Password" required autofocus aria-label="Password"><button class="btn primary">Open</button></form><p class="err" hidden></p></div>`;
+    $('form.unlock').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const r = await fetch(`${base}/unlock`, { method: 'POST', body: ev.target.pw.value, credentials: 'same-origin', headers: { 'Content-Type': 'text/plain' } });
+      if (r.ok) return load();
+      const e = $('.err'); e.textContent = (await r.json().catch(() => ({}))).error || 'That didn’t work. Try again.'; e.hidden = false;
+    });
+  }
+
+  function file() {
+    const f = info.files[0];
+    const dl = `<a class="btn primary" href="${fileUrl(f.path)}" download>${icon('download')}Download</a>`;
+    frame();
+    $('#main').innerHTML = `<div class="card">${isImage(f.path) ? `<img class="preview" src="${fileUrl(f.path, true)}" alt="${esc(info.name)}">` : icon('file', 'big')}
+      <h1>${esc(info.name)}</h1><p>${size(f.size)} · modified ${when(f.mtime)}</p>${dl}</div>`;
+  }
+
+  // a folder: browse into subfolders, download files one by one or all as a zip
+  function folder() {
+    const files = info.files.filter((f) => !f.path.endsWith('/'));
+    const total = files.reduce((n, f) => n + f.size, 0);
+    frame();
+    const summary = `${files.length} ${files.length === 1 ? 'file' : 'files'} · ${size(total)}`;
+    const zip = files.length ? `<button class="btn primary" id="zip">${icon('download')}Download all</button>` : '';
+    const pre = dir ? dir + '/' : '';
+    const dirs = new Map(), here = [];
+    for (const f of info.files) {
+      if (!f.path.startsWith(pre)) continue;
+      const rel = f.path.slice(pre.length); if (!rel) continue;
+      const cut = rel.indexOf('/');
+      if (cut === -1) { here.push(f); continue; }
+      const name = rel.slice(0, cut), d = dirs.get(name) || { name, n: 0, size: 0 };
+      if (rel !== name + '/') { d.n++; d.size += f.size; }
+      dirs.set(name, d);
+    }
+    const segs = dir ? dir.split('/') : [];
+    let crumbs = `<a href="#" data-dir="">${esc(info.name)}</a>`;
+    segs.forEach((s, i) => { crumbs += `${icon('chevron')}<a href="#" data-dir="${esc(segs.slice(0, i + 1).join('/'))}">${esc(s)}</a>`; });
+    const rows = [...[...dirs.values()].sort((a, b) => a.name.localeCompare(b.name)).map((d) => `<tr><td><div class="name">${icon('folder', 'folder')}<a href="#" data-dir="${esc(pre + d.name)}">${esc(d.name)}</a></div></td><td class="c-mod">—</td><td class="c-size">${d.n} ${d.n === 1 ? 'file' : 'files'}</td><td class="c-act"></td></tr>`),
+      ...here.sort((a, b) => a.path.localeCompare(b.path)).map((f) => { const n = f.path.slice(pre.length); return `<tr><td><div class="name">${icon('file')}<a href="${fileUrl(f.path)}" download>${esc(n)}</a></div></td><td class="c-mod">${when(f.mtime)}</td><td class="c-size">${size(f.size)}</td><td class="c-act"><a class="icon-btn" href="${fileUrl(f.path)}" download aria-label="Download ${esc(n)}">${icon('download')}</a></td></tr>`; })];
+    $('#main').innerHTML = `${segs.length ? `<div class="crumbs">${crumbs}</div>` : ''}<div class="title-row"><h1>${esc(segs.length ? segs[segs.length - 1] : info.name)}</h1>${segs.length ? '' : zip}</div>${segs.length ? '' : `<p class="sub">${summary}</p>`}
+      ${rows.length ? `<table><thead><tr><th>Name</th><th class="c-mod">Modified</th><th class="c-size">Size</th><th class="c-act"></th></tr></thead><tbody>${rows.join('')}</tbody></table>`
+        : `<div class="card">${icon('folder', 'big')}<h1>Empty folder</h1><p>Nothing has been added here yet.</p></div>`}`;
+  }
+
+  // "Download all": a zip, stored (no compression), built in the browser
+  const crcTable = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = crcTable[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  async function zipAll(btn) {
+    const files = info.files.filter((f) => !f.path.endsWith('/'));
+    const enc = new TextEncoder(), parts = [], central = [];
+    let off = 0, i = 0;
+    for (const f of files) {
+      btn.innerHTML = `${icon('download')}Preparing ${++i} of ${files.length}…`;
+      const data = new Uint8Array(await (await fetch(fileUrl(f.path), { credentials: 'same-origin' })).arrayBuffer());
+      const name = enc.encode(f.path), crc = crc32(data);
+      const h = new DataView(new ArrayBuffer(30));
+      [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, 0, 2], [12, 0x21, 2], [14, crc, 4], [18, data.length, 4], [22, data.length, 4], [26, name.length, 2], [28, 0, 2]]
+        .forEach(([o, v, n]) => n === 4 ? h.setUint32(o, v, true) : h.setUint16(o, v, true));
+      parts.push(new Uint8Array(h.buffer), name, data);
+      const c = new DataView(new ArrayBuffer(46));
+      [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, 0, 2], [14, 0x21, 2], [16, crc, 4], [20, data.length, 4], [24, data.length, 4], [28, name.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, off, 4]]
+        .forEach(([o, v, n]) => n === 4 ? c.setUint32(o, v, true) : c.setUint16(o, v, true));
+      central.push(new Uint8Array(c.buffer), name);
+      off += 30 + name.length + data.length;
+    }
+    const csize = central.reduce((n, p) => n + p.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    [[0, 0x06054b50, 4], [8, files.length, 2], [10, files.length, 2], [12, csize, 4], [16, off, 4]].forEach(([o, v, n]) => n === 4 ? end.setUint32(o, v, true) : end.setUint16(o, v, true));
+    const url = URL.createObjectURL(new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' }));
+    const a = document.createElement('a'); a.href = url; a.download = `${info.name}.zip`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    btn.innerHTML = `${icon('download')}Download all`;
+  }
+
+  document.addEventListener('click', (ev) => {
+    const d = ev.target.closest('[data-dir]');
+    if (d) { ev.preventDefault(); dir = d.dataset.dir; folder(); window.scrollTo(0, 0); return; }
+    const z = ev.target.closest('#zip');
+    if (z && !z.disabled) { z.disabled = true; zipAll(z).catch(() => { z.textContent = 'Couldn’t download. Try again.'; }).finally(() => (z.disabled = false)); }
+  });
+
+  async function load() {
+    try {
+      const r = await fetch(`${base}/info`, { credentials: 'same-origin' });
+      info = await r.json();
+      if (!r.ok) return gone(info.error || 'This link doesn’t exist or has expired.');
+    } catch { return gone('The ship sharing this didn’t answer. Try again in a moment.'); }
+    if (info.locked) return locked();
+    info.kind === 'file' ? file() : folder();
+  }
+  load();
+})();
+</script>
+</body>
+</html>

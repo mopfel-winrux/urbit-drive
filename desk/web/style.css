@@ -218,6 +218,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--blue); m
 .field.num::-webkit-inner-spin-button, .field.num::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .muted { color: var(--fg2); }
 .revoked { color: var(--fg2); }
+.files tr.revoked td { opacity: 0.6; }
 
 /* dialog */
 dialog { border: 0; border-radius: 12px; padding: 0; width: min(480px, calc(100vw - 32px)); background: var(--bg); color: var(--fg); box-shadow: var(--shadow); }

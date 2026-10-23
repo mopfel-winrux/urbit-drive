@@ -300,6 +300,35 @@ the same on every OS. The tray uses `fyne.io/systray`.
   that sees a new epoch cancels its reads in flight and starts over with
   the new key.
 
+## Share links
+
+A folder's host can publish any file, subfolder or whole folder by link, to
+people with no ship at all. That's the only part of Drive that isn't mesa:
+it's plain HTTPS from the ship.
+
+- **The link** is `https://<ship>/drive-api/s/<token>`. The token is 128
+  random bits chosen by the page that makes it, and it is the capability:
+  whoever has it can open the link.
+- **What the agent serves** (its own eyre binding, which needs no login):
+  - the page itself (`web/share.html`, read from the desk);
+  - `/info`: what the link is, and its file list;
+  - `/unlock`: a POST with the password;
+  - `/file?path=<rel>`: one file, as an attachment, or inline for images
+    with `inline=1`.
+- **Links are live.** Each request resolves the link's path in the current
+  tree, so a link always shows the latest version. When the path is gone,
+  the link answers 410.
+- **Optional settings.** An expiry, and a password, stored salted and
+  stretched (4,096 rounds of SHA-256). Entering the password sets an
+  HttpOnly cookie scoped to that link's path, which unlocks it for a day.
+- **Scope is enforced on the ship.** A file request must name a path inside
+  the link's scope, as listed by `/info`. Responses send
+  `Referrer-Policy: no-referrer`, so the token doesn't leak to other sites.
+- **Who can make links:** only the folder's host. A guest can't publish an
+  owner's folder to the world.
+- **Counts.** Each link counts views (`/info` reads) and downloads.
+- **Turning a link off** deletes it; its token then answers 404.
+
 ## Selective sync
 
 A device can exclude a path (a file, or a folder and everything in it) from

@@ -38,6 +38,7 @@
   let sort = { key: 'name', dir: 1 };
   let renaming = null;          // name being renamed inline
   let query = '';
+  let links = [];               // share links, from /x/links
 
   // ----- routing: #/  #/f/<fid>/<path>?sel=<name>  #/activity  #/more/<tab>
 
@@ -331,7 +332,7 @@
     const c = $('#content');
     const tab = (id, ic, label) => `<a href="#/more/${id}" ${r.tab === id ? 'aria-current="page"' : ''}>${icon(ic)}${label}</a>`;
     c.innerHTML = `<div class="crumbs"></div><div class="title-row"><h1>More</h1></div>
-      <nav class="tabs" aria-label="More">${tab('deleted', 'trash', 'Deleted files')}${tab('computers', 'computer', 'Computers')}${tab('settings', 'settings', 'Settings')}</nav><div id="pane"></div>`;
+      <nav class="tabs" aria-label="More">${tab('deleted', 'trash', 'Deleted files')}${tab('links', 'link', 'Links')}${tab('computers', 'computer', 'Computers')}${tab('settings', 'settings', 'Settings')}</nav><div id="pane"></div>`;
     const p = $('#pane');
     if (r.tab === 'computers') {
       const ds = [...st.devices].sort((a, b) => (a.revoked !== null) - (b.revoked !== null) || b.since - a.since);
@@ -341,6 +342,18 @@
           <td class="c-access" title="${esc(d.moon)}">${esc(d.moon)}</td><td class="c-mod">${when(d.revoked || d.since)}</td>
           <td class="c-act">${d.revoked ? '' : `<button class="icon-btn" data-unpair="${esc(d.moon)}" data-name="${esc(d.name)}" aria-label="Remove ${esc(d.name)}">${icon('trash')}</button>`}</td></tr>`).join('')}</tbody></table>`
           : emptyState('computer', 'No computers yet', 'Install the desktop app on a computer and pair it with your ship; its folder starts syncing right away.', `<a class="btn primary" href="${RELEASES}" target="_blank" rel="noopener">${icon('desktop-app')}Get the desktop app</a>`));
+    } else if (r.tab === 'links') {
+      const ls = [...links].sort((a, b) => b.made - a.made);
+      p.innerHTML = `<p class="sub" style="margin-top:0">Anyone with a link can open what it points to, without a ship. Links always show the current version. Turn one off and it stops working at once.</p>` +
+        (ls.length ? `<table class="files"><thead><tr><th class="c-name">Shared item</th><th class="c-access">Who can open it</th><th class="c-mod">Created</th><th class="c-size">Views</th><th class="c-size">Downloads</th><th class="c-act" aria-label="Actions"></th></tr></thead><tbody>${ls.map((l) => {
+          const expired = l.expires && l.expires < Date.now();
+          const where = l.path ? `${esc(l.folder)}${parent(l.path) ? ' / ' + esc(parent(l.path)) : ''}` : 'The whole folder';
+          const access = expired ? 'Expired' : `${l.password ? 'Needs the password' : 'Anyone with the link'}${l.expires ? ` · until ${when(l.expires)}` : ''}`;
+          return `<tr class="${expired || !l.live ? 'revoked' : ''}"><td class="c-name"><div class="name">${l.kind === 'file' ? icon('file') : icon('folder', 'folder')}<div class="nm"><span class="label">${esc(l.path ? base(l.path) : l.folder)}</span><small class="meta" style="display:block">${where}${l.live ? '' : ' · no longer there'}</small></div></div></td>
+          <td class="c-access">${access}</td><td class="c-mod">${when(l.made)}</td><td class="c-size">${l.views}</td><td class="c-size">${l.downloads}</td>
+          <td class="c-act"><button class="icon-btn" data-linkmenu="${esc(l.token)}" aria-label="Actions for this link" aria-haspopup="menu" aria-expanded="false">${icon('more')}</button></td></tr>`;
+        }).join('')}</tbody></table>`
+          : emptyState('link', 'No links yet', 'Choose Copy link on a file or folder you own to share it with anyone, ship or not.', ''));
     } else if (r.tab === 'settings') {
       p.innerHTML = `
         <div class="setting"><b>Keep deleted files and earlier versions</b><p>After this, they’re removed from your ship for good.</p>
@@ -393,6 +406,7 @@
 
   async function refresh() {
     st = await ship.scry('state');
+    links = await ship.scry('links').catch(() => links);
     const r = route();
     for (const fid of [...trees.keys()]) { if (fid !== r.fid) { trees.delete(fid); olds.delete(fid); } }
     if (r.view === 'folder') await loadTree(r.fid, true).catch(() => null);
@@ -484,6 +498,61 @@
     selection.clear(); await refresh();
   }
 
+  // ----- share links
+
+  const linkUrl = (tok) => `${location.origin}/drive-api/s/${tok}`;
+  // the item's working link, if it has one (expired ones can't be reused)
+  const linkFor = (fid, path) => links.find((l) => l.fid === fid && l.path === path && !(l.expires && l.expires < Date.now()));
+  const newToken = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
+    const i = document.createElement('input'); i.value = text; document.body.appendChild(i); i.select();
+    const ok = document.execCommand('copy'); i.remove(); return ok;
+  }
+
+  async function copyLink(fid, path) {
+    let l = linkFor(fid, path);
+    if (!l) {
+      const token = newToken();
+      if (!await act({ link: { token, fid, path, expires: null, password: null } })) return;
+      links = await ship.scry('links').catch(() => links);
+      l = linkFor(fid, path) || { token };
+    }
+    (await copyText(linkUrl(l.token))) ? toast('Link copied. Anyone with it can open this.') : toast(linkUrl(l.token));
+  }
+
+  function linkDialog(fid, path, name) {
+    const l = linkFor(fid, path);
+    const token = l ? l.token : newToken();
+    const exp = l && l.expires ? `<option value="keep" selected>Until ${esc(when(l.expires))}</option>` : '';
+    const d = dialog(`<h2>Link to “${esc(name)}”</h2>
+      <p>Anyone with this link can open it, ship or not, and always sees the current version.</p>
+      <div class="row"><input class="field" value="${esc(linkUrl(token))}" readonly aria-label="Link">
+        <button type="button" class="btn" data-copy>${icon('link')}Copy</button></div>
+      <label>Link works<select class="field" name="expires">${exp}<option value="0"${l && l.expires ? '' : ' selected'}>Until you turn it off</option><option value="1">For 1 day</option><option value="7">For 7 days</option><option value="30">For 30 days</option></select></label>
+      <label>Password<input class="field" type="password" name="pw" autocomplete="new-password" placeholder="${l && l.password ? 'A password is set. Type a new one to change it' : 'Optional'}"></label>
+      ${l && l.password ? '<label class="check" style="flex-direction:row;font-weight:400"><input type="checkbox" name="nopw"> Remove the password</label>' : ''}
+      <div class="foot">${l ? '<button type="button" class="btn danger" data-unlink style="margin-right:auto">Turn off link</button>' : ''}<button class="btn" value="cancel">Cancel</button><button class="btn primary" value="ok">${l ? 'Save' : 'Create link'}</button></div>`,
+    async (form) => {
+      const e = form.expires.value;
+      const expires = e === 'keep' ? l.expires : e === '0' ? null : Date.now() + Number(e) * 864e5;
+      const password = form.nopw?.checked ? '' : form.pw.value ? form.pw.value : (l ? null : '');
+      if (await act({ link: { token, fid, path, expires, password } }, l ? 'Link updated' : 'Link created')) {
+        links = await ship.scry('links').catch(() => links);
+        if (!l) await copyText(linkUrl(token));
+        render();
+      }
+    });
+    d.querySelector('[data-copy]').addEventListener('click', async () => {
+      if (!l) { await act({ link: { token, fid, path, expires: null, password: null } }); links = await ship.scry('links').catch(() => links); }
+      toast((await copyText(linkUrl(token))) ? 'Link copied' : linkUrl(token));
+    });
+    d.querySelector('[data-unlink]')?.addEventListener('click', async () => {
+      if (await act({ unlink: token }, 'Link turned off')) { links = await ship.scry('links').catch(() => links); d.close(); render(); }
+    });
+  }
+
   // ----- upload: each 4 MiB piece to /drive-api/blob, then %put
 
   const hasSubtle = !!(window.crypto && crypto.subtle);
@@ -551,16 +620,29 @@
     if (menuBtn) {
       const it = currentItems(r).find((i) => i.name === menuBtn.dataset.menu); if (!it) return;
       const f = it.kind === 'top' ? it.f : folderOf(r.fid), rw = f.role === 'rw';
+      // share links, for folders we host: the whole folder, a subfolder, or a file
+      const fid = it.kind === 'top' ? it.f.fid : r.fid, lpath = it.kind === 'top' ? '' : it.path;
+      const linkItems = mine(f) ? [{ icon: 'link', label: 'Copy link', run: () => copyLink(fid, lpath) },
+        { icon: 'settings', label: 'Link settings…', run: () => linkDialog(fid, lpath, it.name) }] : [];
       const items = it.kind === 'top'
-        ? [{ icon: 'folder', label: 'Open', run: () => (location.hash = folderHref(it.f.fid)) },
-          mine(it.f) ? { icon: 'share', label: 'Share', run: () => shareDialog(it.f) } : { icon: 'close', label: 'Leave folder', danger: true, run: () => leave(it.f) }]
+        ? [{ icon: 'folder', label: 'Open', run: () => (location.hash = folderHref(it.f.fid)) }, ...linkItems,
+          mine(it.f) ? { icon: 'share', label: 'Share with ships', run: () => shareDialog(it.f) } : { icon: 'close', label: 'Leave folder', danger: true, run: () => leave(it.f) }]
         : it.kind === 'dir'
-          ? [{ icon: 'folder', label: 'Open', run: () => (location.hash = folderHref(r.fid, it.path)) },
+          ? [{ icon: 'folder', label: 'Open', run: () => (location.hash = folderHref(r.fid, it.path)) }, ...linkItems,
             ...(rw ? ['-', { icon: 'rename', label: 'Rename', run: () => { renaming = it.name; render(); } }, { icon: 'move', label: 'Move', run: () => moveDialog([it], r) }, { icon: 'trash', label: 'Delete', danger: true, run: () => confirmDelete([it], r) }] : [])]
           : [{ icon: 'download', label: 'Download', href: fileUrl(r.fid, it.hash), download: it.name },
+            ...linkItems,
             { icon: 'history', label: 'Version history', run: () => (location.hash = folderHref(r.fid, r.dir, it.name)) },
             ...(rw ? ['-', { icon: 'rename', label: 'Rename', run: () => { renaming = it.name; render(); } }, { icon: 'move', label: 'Move', run: () => moveDialog([it], r) }, { icon: 'trash', label: 'Delete', danger: true, run: () => confirmDelete([it], r) }] : [])];
       openMenu(menuBtn, items); return;
+    }
+    const lm = t.closest('[data-linkmenu]');
+    if (lm) {
+      const l = links.find((x) => x.token === lm.dataset.linkmenu); if (!l) return;
+      openMenu(lm, [{ icon: 'link', label: 'Copy link', run: async () => toast((await copyText(linkUrl(l.token))) ? 'Link copied' : linkUrl(l.token)) },
+        { icon: 'settings', label: 'Link settings…', run: () => linkDialog(l.fid, l.path, l.path ? base(l.path) : l.folder) },
+        '-', { icon: 'close', label: 'Turn off link', danger: true, run: async () => { if (await act({ unlink: l.token }, 'Link turned off')) { links = await ship.scry('links').catch(() => links); render(); } } }]);
+      return;
     }
     const sortBtn = t.closest('[data-sort]');
     if (sortBtn) { const k = sortBtn.dataset.sort; sort = { key: k, dir: sort.key === k ? -sort.dir : 1 }; render(); return; }
@@ -679,6 +761,7 @@
   try {
     ship = await Ship.connect('drive');
     st = ship.initial;
+    links = await ship.scry('links').catch(() => []);
     await render();
     let t;
     await ship.subscribe('/v1/folders', () => { clearTimeout(t); t = setTimeout(refresh, 300); },
