@@ -54,7 +54,7 @@ Your ship runs the `%drive` agent. It keeps each folder as a log of revisions an
 - **Uploads** happen the other way round. Your computer publishes the new chunks, and your ship reads only the ones it doesn't have.
 - **Sharing** reuses the same protocol between ships. A guest ship mirrors the owner's folder, and relays its own computers' changes back to the owner.
 
-[PROTOCOL.md](PROTOCOL.md) has the full design: data model, namespace, conflict rules, sharing, retention and key rotation.
+[PROTOCOL.md](PROTOCOL.md) has the full design: data model, namespace, conflict rules, sharing, retention and key rotation. [ROADMAP.md](ROADMAP.md) has what's next.
 
 ## Development
 
