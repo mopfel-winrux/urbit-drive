@@ -2,7 +2,7 @@
 # (the planet's web page links to .../releases/latest).
 #
 # Layout: this repo at ./urbit-drive and libmesa at ./libmesa/libmesa, so
-# the client's relative paths (go.mod's replace, internal/keys' include)
+# the client's relative path (go.mod's replace)
 # resolve as in development.
 #
 # Secrets (all optional; without them artifacts are unsigned):

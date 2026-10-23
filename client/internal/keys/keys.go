@@ -2,18 +2,9 @@
 // never leaves it: the planet is told only the public key (pass).
 package keys
 
-/*
-#cgo CFLAGS: -I${SRCDIR}/../../../../libmesa/libmesa/zig-out/include
-#include <stdlib.h>
-#include "mesa/ident.h"
-void mesa_free(void*);
-*/
-import "C"
-
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"unsafe"
 
 	mesa "github.com/mopfel-winrux/libmesa/bindings/go"
 )
@@ -28,20 +19,13 @@ type Moon struct {
 // New makes keys for [who] at life 1, rift 0: a suite %b ring of 'B'
 // and 64 random bytes.
 func New(who mesa.Ship) (*Moon, error) {
-	var ide C.mesa_ident
-	ide.who = C.mesa_ship{lo: C.uint64_t(who.Lo), hi: C.uint64_t(who.Hi)}
-	ide.rift, ide.life = 0, 1
-	ring := (*[65]byte)(unsafe.Pointer(&ide.ring[0]))
+	var ring [65]byte
 	ring[0] = 'B'
 	if _, err := rand.Read(ring[1:]); err != nil {
 		return nil, err
 	}
-	m := &Moon{Ship: who}
-	C.mesa_ident_pass(&ide, (*C.uint8_t)(unsafe.Pointer(&m.Pass[0])))
-	p := C.mesa_keyfile_render(&ide)
-	defer C.mesa_free(unsafe.Pointer(p))
-	m.Keyfile = C.GoString(p)
-	return m, nil
+	id := mesa.NewIdentity(who, 1, 0, ring)
+	return &Moon{Ship: who, Keyfile: id.Keyfile(), Pass: id.Pass()}, nil
 }
 
 // PassHex is the public key as hoon's @ux digits (most significant
