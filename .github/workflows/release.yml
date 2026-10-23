@@ -1,12 +1,9 @@
 # Build and package the drive client; on a v* tag, publish a GitHub release
 # (the planet's web page links to .../releases/latest).
 #
-# Layout: this repo at ./urbit-drive and libmesa at ./libmesa/libmesa, so
-# the client's relative path (go.mod's replace)
-# resolve as in development.
+# libmesa comes in as the submodule client/third_party/libmesa.
 #
 # Secrets (all optional; without them artifacts are unsigned):
-#   LIBMESA_TOKEN          if mopfel-winrux/libmesa is private
 #   MACOS_CERT_P12, MACOS_CERT_PASSWORD, MACOS_SIGN_IDENTITY
 #   APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD      notarization
 #   WINDOWS_PFX_BASE64, WINDOWS_PFX_PASSWORD
@@ -36,34 +33,29 @@ jobs:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v4
-        with: { path: urbit-drive, fetch-depth: 0 }
-      - uses: actions/checkout@v4
-        with:
-          repository: mopfel-winrux/libmesa
-          path: libmesa/libmesa
-          token: ${{ secrets.LIBMESA_TOKEN || github.token }}
+        with: { fetch-depth: 0, submodules: true }
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: urbit-drive/client/go.sum
+          cache-dependency-path: client/go.sum
       - name: test
         if: matrix.arch == 'amd64'
-        working-directory: libmesa/libmesa
-        run: zig build -Dno-host=true -Doptimize=ReleaseFast && cd ../../urbit-drive/client && go vet ./... && go test ./...
+        working-directory: client
+        run: make vet test
       - name: build and package
-        working-directory: urbit-drive/client
+        working-directory: client
         run: make dist-linux-${{ matrix.arch }}
       - name: cross-compile for Windows (zip, unsigned)
         if: matrix.arch == 'amd64'
-        working-directory: urbit-drive/client
+        working-directory: client
         run: make dist-windows-amd64
       - uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.arch }}
-          path: urbit-drive/client/dist/*
+          path: client/dist/*
 
   darwin:
     strategy:
@@ -76,19 +68,14 @@ jobs:
       MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
     steps:
       - uses: actions/checkout@v4
-        with: { path: urbit-drive, fetch-depth: 0 }
-      - uses: actions/checkout@v4
-        with:
-          repository: mopfel-winrux/libmesa
-          path: libmesa/libmesa
-          token: ${{ secrets.LIBMESA_TOKEN || github.token }}
+        with: { fetch-depth: 0, submodules: true }
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: urbit-drive/client/go.sum
+          cache-dependency-path: client/go.sum
       - name: import signing certificate
         if: env.MACOS_CERT_P12 != ''
         env:
@@ -103,7 +90,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KP" "$KC"
           security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
       - name: build and package
-        working-directory: urbit-drive/client
+        working-directory: client
         env:
           MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -113,7 +100,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: darwin-${{ matrix.arch }}
-          path: urbit-drive/client/dist/*
+          path: client/dist/*
 
   windows:
     # the installer needs Inno Setup, so a Windows runner; opt in
@@ -125,24 +112,19 @@ jobs:
       run: { shell: bash }
     steps:
       - uses: actions/checkout@v4
-        with: { path: urbit-drive, fetch-depth: 0 }
-      - uses: actions/checkout@v4
-        with:
-          repository: mopfel-winrux/libmesa
-          path: libmesa/libmesa
-          token: ${{ secrets.LIBMESA_TOKEN || github.token }}
+        with: { fetch-depth: 0, submodules: true }
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: urbit-drive/client/go.sum
+          cache-dependency-path: client/go.sum
       - name: certificate
         if: env.WINDOWS_PFX_BASE64 != ''
         run: echo "$WINDOWS_PFX_BASE64" | base64 --decode > "$RUNNER_TEMP/sign.pfx" && echo "WINDOWS_PFX=$RUNNER_TEMP/sign.pfx" >> $GITHUB_ENV
       - name: build and package (zip, and the Inno Setup installer)
-        working-directory: urbit-drive/client
+        working-directory: client
         env:
           WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         run: |
@@ -151,7 +133,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-amd64
-          path: urbit-drive/client/dist/*
+          path: client/dist/*
 
   release:
     needs: [linux, darwin, windows]

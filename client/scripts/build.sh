@@ -7,14 +7,15 @@
 # #cgo lines at build/libmesa/<target>, and build through a go.work whose
 # replace overrides the one in go.mod. libmesa itself is never touched.
 #
-# env: LIBMESA  libmesa checkout (default ../../libmesa/libmesa from client/)
-#      ZIG      zig 0.15.2 (default: zig on PATH)
+# env: LIBMESA  libmesa checkout (default: the third_party/libmesa submodule)
+#      ZIG      zig 0.15.2 (default: whatever scripts/zig.sh finds or fetches)
 #      VERSION  stamped into the binary (default: git describe)
 set -euo pipefail
 GOOS_T=$1; GOARCH_T=$2
 CLIENT=$(cd "$(dirname "$0")/.." && pwd)
-LIBMESA=$(cd "${LIBMESA:-$CLIENT/../../libmesa/libmesa}" && pwd)
-ZIG=${ZIG:-zig}
+[ -f "${LIBMESA:-$CLIENT/third_party/libmesa}/build.zig" ] || git -C "$CLIENT" submodule update --init third_party/libmesa
+LIBMESA=$(cd "${LIBMESA:-$CLIENT/third_party/libmesa}" && pwd)
+ZIG=${ZIG:-$("$CLIENT/scripts/zig.sh")}
 VERSION=${VERSION:-$(git -C "$CLIENT" describe --tags --always --dirty 2>/dev/null || echo dev)}
 
 case "$GOOS_T/$GOARCH_T" in

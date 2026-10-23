@@ -1,8 +1,9 @@
 #!/bin/bash
 # Boot a fresh fake ship in a tmux session and wait for the dojo.
-# usage: tools/boot-fakezod.sh [ship=zod] [port=8081] [pier-dir=./<ship>] [vere=urbit]
+# usage: tools/boot-fakezod.sh [ship=zod] [port=8081] [pier-dir=./<ship>] [vere]
+# vere: $VERE, else urbit on PATH, else a copy tools/get-vere.sh downloads
 set -e
-SHIP=${1:-zod}; PORT=${2:-8081}; PIER=${3:-./$SHIP}; VERE=${4:-${VERE:-urbit}}
+SHIP=${1:-zod}; PORT=${2:-8081}; PIER=${3:-./$SHIP}; VERE=${4:-${VERE:-$(command -v urbit || "$(dirname "$0")/get-vere.sh")}}
 SESSION="fake-$SHIP"
 if tmux has-session -t "$SESSION" 2>/dev/null; then echo "tmux session $SESSION already exists"; exit 1; fi
 if [ -d "$PIER" ]; then

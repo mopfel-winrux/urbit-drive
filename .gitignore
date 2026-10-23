@@ -11,3 +11,4 @@ client/build/
 client/dist/
 .impeccable/review/
 .impeccable/mocks/
+tools/.vere/

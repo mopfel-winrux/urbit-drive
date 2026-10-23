@@ -22,4 +22,4 @@ require (
 	modernc.org/memory v1.12.1 // indirect
 )
 
-replace github.com/mopfel-winrux/libmesa/bindings/go => ../../libmesa/libmesa/bindings/go
+replace github.com/mopfel-winrux/libmesa/bindings/go => ./third_party/libmesa/bindings/go

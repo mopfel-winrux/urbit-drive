@@ -1,0 +1,3 @@
+[submodule "client/third_party/libmesa"]
+	path = client/third_party/libmesa
+	url = https://github.com/mopfel-winrux/libmesa.git

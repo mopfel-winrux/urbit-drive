@@ -58,21 +58,34 @@ Your ship runs the `%drive` agent. It keeps each folder as a log of revisions an
 
 ## Development
 
-You need [vere](https://github.com/urbit/vere), zig 0.15.2, Go 1.26, and libmesa checked out at `../libmesa/libmesa`.
+All you need is git, curl, tmux and a Go toolchain (any recent one; Go fetches the version `go.mod` asks for). The scripts fetch everything else the first time:
+
+- **libmesa:** the git submodule `client/third_party/libmesa`, pinned to a commit.
+- **zig 0.15.2:** downloaded into `client/build/` and checked against ziglang.org's published checksum, unless you already have that version.
+- **vere:** the official urbit runtime, downloaded into `tools/.vere/`, unless `urbit` is on your PATH.
 
 ```sh
-# a fake ship with the desk
-VERE=/path/to/urbit tools/boot-fakezod.sh zod 8081 ./zod
-tools/deploy.sh ./zod drive --install     # after |new-desk %drive and |mount %drive
+git clone --recursive https://github.com/mopfel-winrux/urbit-drive
+cd urbit-drive
+
+# a fake ~zod with the desk installed
+tools/boot-fakezod.sh zod 8081 ./zod
+tools/get-cookie.sh 8081 > .ship-cookie
+tools/install-urbit-mcp.sh ./zod 8081 fake-zod zod   # the deploy loop's helper desk
+tools/mcp.sh dojo/command '{"command":"|new-desk %drive"}'
+tools/mcp.sh dojo/command '{"command":"|mount %drive"}'
+tools/deploy.sh ./zod drive --install
 
 # the desktop app
-cd client && go build -o bin/drive ./cmd/drive
+cd client
+make                    # libmesa, zig if needed, then bin/drive
+make test
 ./bin/drive pair -home /tmp/dev -dir /tmp/Drive -name laptop -fake \
     -url http://localhost:8081 -code lidlut-tabwed-pillex-ridrup
-./bin/drive            # tray and settings page; `drive run` for headless
+./bin/drive tray -home /tmp/dev   # tray and settings page; `drive run` for headless
 ```
 
-`make dist-linux` (in `client/`) builds release archives. The release workflow builds Linux, macOS and Windows on every `v*` tag.
+`make dist-linux` and `make dist-windows-amd64` cross-build release archives. On a Mac, `make dist-darwin-arm64` builds the Mac ones. The release workflow builds them all on every `v*` tag.
 
 ## Status
 

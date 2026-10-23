@@ -353,15 +353,6 @@ mid-replay doesn't re-apply other paths' history.
   the moon is on another network? Test on the live network early in
   milestone 2.
 
-## Running the slice
+## Running it
 
-```sh
-VERE=../libmesa/vere/zig-out/x86_64-linux-musl/urbit tools/boot-fakezod.sh zod 8081 ./zod
-# urbit-mcp + |new-desk %drive + |mount %drive, then:
-tools/deploy.sh ./zod drive --install
-cd client && go build -o bin/drive ./cmd/drive     # Go >= 1.26; libmesa built in ../../libmesa/libmesa
-./bin/drive pair -home /tmp/devA -dir /tmp/A -name devA -fake \
-    -url http://localhost:8081 -code lidlut-tabwed-pillex-ridrup
-./bin/drive run -home /tmp/devA        # DRIVE_DEBUG=1 for scan tracing
-./bin/drive status -home /tmp/devA
-```
+See the README's Development section: `client/make` fetches libmesa (a submodule) and zig 0.15.2, and `tools/boot-fakezod.sh` fetches vere.
