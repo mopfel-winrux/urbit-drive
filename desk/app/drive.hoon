@@ -78,11 +78,20 @@
   ?+  path  (on-watch:def path)
       [%v1 %folders ~]
     ?>  (allowed:hc src.bowl)
+    ::  every folder's head, then the results of this device's commits
+    ::  (a commit that changed nothing has no wave to show for it)
+    ::
     :_  this
-    %+  turn  ~(tap by folders)
-    |=  [=fid f=folder]
-    ^-  card
-    [%give %fact ~ %drive-update !>(`update`[%folder fid name.f host.f epoch.f head.f])]
+    %+  weld
+      %+  turn  ~(tap by folders)
+      |=  [=fid f=folder]
+      ^-  card
+      [%give %fact ~ %drive-update !>(`update`[%folder fid name.f host.f epoch.f head.f])]
+    %+  murn  ~(tap by done)
+    |=  [[who=ship cid=@uv] res=(each aeon @t)]
+    ^-  (unit card)
+    ?.  =(who src.bowl)  ~
+    `[%give %fact ~ %drive-update !>(`update`[%result who cid res])]
   ==
 ::
 ++  on-peek

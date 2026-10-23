@@ -1,6 +1,7 @@
 # %drive — Dropbox-style sync over mesa
 
-Status: draft 0.1, 2026-10-23. Milestone 1 (vertical slice) in progress.
+Status: draft 0.2, 2026-10-23. Milestone 1 (vertical slice) works on a fake `~zod`:
+pairing, upload, download, edits, deletes, and both conflict paths.
 
 A gall desk, `%drive`, turns a planet into a file-sync server. Native clients
 (Go, on [libmesa](https://github.com/mopfel-winrux/libmesa)) run on
@@ -122,9 +123,14 @@ watch /v1/folders          ;  facts: %drive-update
   [%result cid (each aeon tang)]          outcome of the follower's commit cid
 ```
 
-A follower that missed facts (kick, restart) resubscribes, gets the
-`%folder` snapshot again, and reads the waves it is missing. If they've been
-pruned, it reads the nearest rock instead. The subscription only makes
+A follower watches afresh every time it starts. It leaves its old
+subscription, gets the `%folder` snapshot again, and reads the waves it is
+missing (or the nearest rock, if they've been pruned). A fresh watch also
+replays the `%result`s of that ship's commits, because a commit that changed
+nothing produces no wave. Starting over matters in practice: after a device
+has been offline, facts on its old flow sit in the planet's retransmit
+backoff. In testing they arrived about 90 s after the device came back,
+while a fresh watch answers in under a second. The subscription only makes
 updates arrive faster. Correctness comes from the immutable log.
 
 ## Writing: commits are pull-based
@@ -231,10 +237,19 @@ a wave and acking the fact that announced it happen in one transaction:
 
 **Applying a wave to disk:** write to a temporary file in the same
 directory, check its hash, then `rename`. If the local file changed since
-the last sync (its hash differs from `files.hash`), don't overwrite it.
-Leave it alone and commit it with the old base, so the host produces a
-conflicted copy. This is the same don't-clobber rule clay-sync's
-`_unix_write_file_soft` uses.
+the last sync, this is clay-sync's don't-clobber rule:
+- someone else changed a file we edited and haven't committed: move our
+  edit aside as a conflicted copy (the next scan uploads it), then write
+  theirs;
+- our edit is already in a commit in flight: write theirs, because the
+  planet will turn ours into the conflicted copy;
+- our own wave arriving after a newer local edit: keep the edit, and
+  commit it next on top;
+- a delete arriving for a file we edited: keep the file (an edit beats a
+  delete).
+
+A device scans only once it has heard each folder's head in the current
+run, so it doesn't commit on a stale base after a restart.
 
 **Platforms:** the Go binding uses only libmesa's core (Go does the UDP,
 timers and HTTP), so a Windows build needs only the core's C (urcrypt subset +
@@ -261,3 +276,16 @@ the same on every OS. The tray uses `fyne.io/systray`.
 - Does a moon's sponsor-side routing hold when the planet is behind NAT and
   the moon is on another network? Test on the live network early in
   milestone 2.
+
+## Running the slice
+
+```sh
+VERE=../libmesa/vere/zig-out/x86_64-linux-musl/urbit tools/boot-fakezod.sh zod 8081 ./zod
+# urbit-mcp + |new-desk %drive + |mount %drive, then:
+tools/deploy.sh ./zod drive --install
+cd client && go build -o bin/drive ./cmd/drive     # Go >= 1.26; libmesa built in ../../libmesa/libmesa
+./bin/drive pair -home /tmp/devA -dir /tmp/A -name devA -fake \
+    -url http://localhost:8081 -code lidlut-tabwed-pillex-ridrup
+./bin/drive run -home /tmp/devA        # DRIVE_DEBUG=1 for scan tracing
+./bin/drive status -home /tmp/devA
+```
