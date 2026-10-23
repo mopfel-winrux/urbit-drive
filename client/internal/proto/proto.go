@@ -212,6 +212,21 @@ type Update struct {
 	}
 	Result *Result
 	Gone   string // a fid we no longer have
+	Link   *Link
+}
+
+// Link answers a device's link-ask: the token to use, or why not.
+type Link struct {
+	Who   mesa.Ship
+	Asked string
+	Token string // when Err is ""
+	Err   string
+}
+
+// LinkAsk is the %link-ask poke: a link to [path] ("" for the whole
+// folder) in folder [fid], offering [token].
+func LinkAsk(token, fid, path string) mesa.Value {
+	return mesa.Tuple("link-ask", token, fid, path)
 }
 
 type Hello struct {
@@ -266,6 +281,17 @@ func ParseUpdate(n mesa.Noun) (*Update, error) {
 		u.Result = resultOf(t)
 	case "gone":
 		u.Gone = t.Text()
+	case "link":
+		l := &Link{Who: atomShip(t.Head())}
+		t = t.Tail()
+		l.Asked = t.Head().Text()
+		res := t.Tail()
+		if u64(res.Head()) == 0 {
+			l.Token = res.Tail().Text()
+		} else {
+			l.Err = res.Tail().Text()
+		}
+		u.Link = l
 	default:
 		return nil, fmt.Errorf("unknown update %%%s", tag)
 	}

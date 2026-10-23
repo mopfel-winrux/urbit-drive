@@ -13,7 +13,8 @@ design these build on.
 
 **Done since v0.2:** share links (files, subfolders and whole folders, with
 optional expiry and password, view and download counts, a Links page, and
-"Download all" as a zip). See PROTOCOL.md, Share links.
+"Download all" as a zip), which you can also copy from a computer: the tray,
+the settings page, or `drive link`. See PROTOCOL.md, Share links.
 
 ## 1. Trustworthy
 
@@ -69,9 +70,13 @@ What a hosted sync service can't offer, because your ship is the server and
 the namespace is the transport.
 
 - **Share links, further.** Done: links to files and folders, with optional
-  expiry and password. Next: links for people to upload into a folder (file
-  requests), links made by guests with edit rights, download limits, and
-  rate limiting on the ship.
+  expiry and password, from the web or a computer. Next:
+  - "Copy Drive link" in Finder's and Explorer's right-click menus (a Finder
+    Sync extension, a Windows shell extension, and file-manager scripts on
+    Linux, all calling `drive link`);
+  - links for people to upload into a folder (file requests);
+  - links made by guests with edit rights;
+  - download limits, and rate limiting on the ship.
 - **Share with groups.** Share a folder with a Tlon group or a list of ships,
   and access follows group membership.
 - **Folders other apps can read.** Let other Urbit apps (notes, a photo

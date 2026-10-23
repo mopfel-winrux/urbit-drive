@@ -328,6 +328,18 @@ it's plain HTTPS from the ship.
   owner's folder to the world.
 - **Counts.** Each link counts views (`/info` reads) and downloads.
 - **Turning a link off** deletes it; its token then answers 404.
+- **From a computer.** A device asks its planet with a
+  `[%link-ask token fid path]` poke, offering a fresh token. The planet
+  answers on the device's `/v1/folders` subscription with a
+  `[%link who asked (each token why)]` fact. The token is either a plain
+  link that already exists for the item (no password, no expiry) or the
+  offered one. The device then builds the URL from the planet's web address,
+  saved at sign-in. A nacked poke (an older `%drive`) fails at once instead
+  of timing out. The planet refuses with a reason for a folder it doesn't
+  host, and for anything not on it yet. On the computer, the tray's recent
+  files, the settings page and `drive link <path>` all use this. The CLI
+  finds the running app through `ui.json` in its state directory, which
+  holds the page's address and token, owner-only.
 
 ## Selective sync
 

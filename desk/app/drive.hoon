@@ -539,7 +539,7 @@
   ::
       %link-set
     ?>  =(our src):bowl
-    ?>  &(=(32 (met 3 token.act)) (levy (trip token.act) |=(c=@t ?|(&((gte c '0') (lte c '9')) &((gte c 'a') (lte c 'f'))))))
+    ?>  (good-token token.act)
     =/  f  (hosted fid.act)
     ?>  ?=(^ (scope f path.act))
     =/  old  (~(get by links) token.act)
@@ -558,6 +558,27 @@
       %link-drop
     ?>  =(our src):bowl
     `state(links (~(del by links) token.act))
+  ::  a device wants a link: reuse a plain working one, or make this one
+  ::
+      %link-ask
+    ?>  &(!=(our src):bowl (allowed src.bowl))
+    =/  answer
+      |=  res=(each @t @t)
+      ^-  card
+      (give fid.act [%link src.bowl token.act res])
+    ?.  (good-token token.act)  [~[(answer |+'bad token')] state]
+    ?~  f=(~(get by folders) fid.act)  [~[(answer |+'That folder isn’t on your ship.')] state]
+    ?.  =(our.bowl host.u.f)
+      [~[(answer |+'Only folders your ship hosts can have links. Ask the folder’s owner.')] state]
+    ?~  (scope u.f path.act)  [~[(answer |+'That isn’t on your ship yet. Wait for it to sync, then try again.')] state]
+    =/  have=(list @t)
+      %+  murn  ~(tap by links)
+      |=  [t=@t l=link]
+      ?.  &(=(fid.l fid.act) =(path.l path.act) ?=(~ pass.l) ?=(~ expires.l))  ~
+      `t
+    ?^  have  [~[(answer &+i.have)] state]
+    :-  ~[(answer &+token.act)]
+    state(links (~(put by links) token.act [fid.act path.act now.bowl ~ ~ 0 0]))
   ::
       %mkdir
     ?>  =(our src):bowl
@@ -603,6 +624,15 @@
   =/  h  (hash-chunk:lib c)
   :-  (reply 200 (crip "\{\"hash\":\"{(trip (hext:lib h))}\"}"))
   state(blobs (~(put by blobs) h c))
+::  +good-token: 32 lowercase hex digits (128 bits)
+::
+++  good-token
+  |=  t=@t
+  ^-  ?
+  ?&  =(32 (met 3 t))
+      %+  levy  (trip t)
+      |=(c=@t |(&((gte c '0') (lte c '9')) &((gte c 'a') (lte c 'f'))))
+  ==
 ::  +split-url: an eyre url into its path and decoded query
 ::
 ++  split-url
@@ -1183,6 +1213,7 @@
       state(done (~(put by done) [who cid]:upd res.upd))
     ::
       %gone  (drop fid)
+      %link  `state                  ::  the host's own devices' business
     ==
   ==
 ::  +host-head: the host's epoch, head and floor for a mirror. A new

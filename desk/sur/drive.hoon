@@ -93,7 +93,7 @@
 ::    from our ship (the client over eyre, or the web UI):
 ::      %pair %unpair %new-folder %share %unshare %accept %decline %leave
 ::      %restore %keep %prune %put %del %mv %mkdir %link-set %link-drop
-::    from our devices:  %commit
+::    from our devices:  %commit %link-ask
 ::    from a host:       %invite %uninvite
 ::    from a guest:      %relay (a guest's device's commit)
 ::
@@ -126,6 +126,11 @@
           pass=?(%keep %none [%set p=@t])
       ==
       [%link-drop token=@t]
+    ::  from our devices: a link to this file or folder. The answer is a
+    ::  %link fact: the token to use (an existing plain link's, or this
+    ::  one), or why not.
+    ::
+      [%link-ask token=@t =fid path=fpath]
   ==
 ::  $update: facts on /v1/folders (our devices) and /v1/share/<fid>
 ::  (a folder's guests)
@@ -143,5 +148,6 @@
       [%head =fid =aeon]
       [%result result]
       [%gone =fid]
+      [%link who=ship asked=@t res=(each @t @t)]  ::  token, or why not
   ==
 --

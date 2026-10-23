@@ -97,7 +97,9 @@ type Follower struct {
 	keyBone uint64
 	keyQ    []string // fids asked for on keyBone, in order
 	upKid   uint64
-	recent  *activity // file events, for the tray
+	recent  *activity                  // file events, for the tray
+	asking  map[string]chan linkAnswer // link-asks waiting on their answer
+	askSeq  map[uint64]string          // their pokes, by sequence number
 }
 
 // New makes a follower; pass its Helpers() to mesa.Open with it as the
@@ -117,6 +119,7 @@ func New(cfg Config, db *sql.Conn) *Follower {
 		debugf("kicked from %s %s; resubscribing", s.Ship, s.Path)
 	}}
 	f.pokes = &mesa.Pokes{Name: "drive", OnDone: func(n *mesa.Node, her mesa.Ship, agent string, seq uint64, err *mesa.Nack) {
+		f.linkPokeDone(seq, err != nil)
 		if err != nil {
 			cfg.Log("commit poke nacked: %s %v", err.Tag, err.Lines)
 		}
@@ -284,6 +287,11 @@ func (f *Follower) onFact(n *mesa.Node, s mesa.Sub, mark string, noun mesa.Noun)
 		}
 	case u.Result != nil:
 		f.takeResult(n, u.Result)
+	case u.Link != nil:
+		if c, ok := f.asking[u.Link.Asked]; ok && u.Link.Who == n.Ship() {
+			delete(f.asking, u.Link.Asked)
+			c <- linkAnswer{u.Link.Token, u.Link.Err}
+		}
 	}
 }
 

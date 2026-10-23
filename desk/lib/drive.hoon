@@ -184,6 +184,7 @@
       %folder  ~[folder+(pairs ~[fid+s+fid.u name+s+name.u head+(numb head.u)])]
       %head    ~[head+(pairs ~[fid+s+fid.u aeon+(numb aeon.u)])]
       %gone    ~[gone+s+fid.u]
+      %link    ~[link+(pairs ~[who+s+(scot %p who.u) asked+s+asked.u ok+b+?=(%& -.res.u)])]
     ::
         %result
       =/  ok=?  ?=(%& -.res.u)

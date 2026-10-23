@@ -43,8 +43,11 @@ func trayReady(a *App) {
 	// the latest files: moving ones first, then what changed most recently
 	var lines [maxFileLines]*systray.MenuItem
 	var shown [maxFileLines]dsync.FileEvent
+	var copies, shows [maxFileLines]*systray.MenuItem
 	for i := range lines {
 		lines[i] = systray.AddMenuItem("", "")
+		copies[i] = lines[i].AddSubMenuItem("Copy link", "A link anyone can open, served by your ship")
+		shows[i] = lines[i].AddSubMenuItem("Show in folder", "")
 		lines[i].Hide()
 	}
 	icons := map[dsync.FileState][]byte{
@@ -124,7 +127,7 @@ func trayReady(a *App) {
 	}
 	refresh()
 
-	rowClicks := clicks(lines[:])
+	showClicks, copyClicks := clicks(shows[:]), clicks(copies[:])
 	tick := time.NewTicker(2 * time.Second)
 	go func() {
 		defer tick.Stop()
@@ -135,10 +138,21 @@ func trayReady(a *App) {
 				return
 			case <-tick.C:
 				refresh()
-			case i := <-rowClicks:
+			case i := <-showClicks:
 				if p := a.LocalPath(shown[i]); p != "" {
 					open(filepath.Dir(p))
 				}
+			case i := <-copyClicks:
+				e := shown[i]
+				go func() {
+					status.SetTitle("Getting a link to " + filepath.Base(e.Path) + "…")
+					if _, err := a.CopyLink(a.LocalPath(e)); err != nil {
+						log.Printf("link: %v", err)
+						status.SetTitle("Couldn't make a link: " + err.Error())
+						return
+					}
+					status.SetTitle("Link copied: " + filepath.Base(e.Path))
+				}()
 			case <-openDir.ClickedCh:
 				if c, err := LoadConfig(a.Home); err == nil {
 					open(c.Dir)

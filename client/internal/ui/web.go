@@ -145,16 +145,20 @@ func (a *App) Serve() error {
 		return err
 	}
 	a.addr = ln.Addr().String()
+	a.writeControl()
 	mux := http.NewServeMux()
+	mux.HandleFunc("POST /link", a.doLink)
 	mux.HandleFunc("GET /{$}", a.page)
 	mux.HandleFunc("POST /pair", a.doPair)
 	mux.HandleFunc("GET /status.json", func(w http.ResponseWriter, r *http.Request) {
 		type line struct {
-			Name  string `json:"name"`
-			State string `json:"state"`
-			Glyph string `json:"glyph,omitempty"`
-			Where string `json:"where,omitempty"`
-			When  int64  `json:"when,omitempty"` // unix ms, for a synced file's time
+			Name   string `json:"name"`
+			State  string `json:"state"`
+			Glyph  string `json:"glyph,omitempty"`
+			Where  string `json:"where,omitempty"`
+			When   int64  `json:"when,omitempty"` // unix ms, for a synced file's time
+			Folder string `json:"folder,omitempty"`
+			Path   string `json:"path,omitempty"`
 		}
 		st := a.Status()
 		out := struct {
@@ -163,7 +167,7 @@ func (a *App) Serve() error {
 			Folders []line `json:"folders"`
 		}{Summary: Summary(st), Files: []line{}, Folders: []line{}}
 		for _, e := range st.Files {
-			l := line{path.Base(e.Path), FileState(e), glyphName(e.State), e.Folder + "/" + e.Path, 0}
+			l := line{path.Base(e.Path), FileState(e), glyphName(e.State), e.Folder + "/" + e.Path, 0, e.Folder, e.Path}
 			if e.State == dsync.Synced {
 				l.When = e.When.UnixMilli()
 			}
@@ -252,6 +256,10 @@ func (a *App) guard(h http.Handler) http.Handler {
 			http.SetCookie(w, &http.Cookie{Name: "drive-ui", Value: a.token, Path: "/",
 				HttpOnly: true, SameSite: http.SameSiteStrictMode})
 			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+		if r.Method == "POST" && ok(r.Header.Get("X-Drive-Token")) {
+			h.ServeHTTP(w, r) // `drive link`, with the control file's token
 			return
 		}
 		if c, err := r.Cookie("drive-ui"); err != nil || !ok(c.Value) {
@@ -437,6 +445,7 @@ details{margin:4px 0 20px}details summary{cursor:pointer;color:var(--fg2)}detail
 .rows li .state{color:var(--fg2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .g-up,.g-down{color:var(--blue)}.g-check{color:var(--green)}.g-warn{color:var(--amber)}.g-x{color:var(--fg2)}.g-fail{color:var(--red)}
 .empty{color:var(--fg2);padding:16px 0;margin:0}
+.btn.small{height:32px;padding:0 8px}.note{background:var(--soft);padding:10px 14px;border-radius:8px;margin:0 0 12px;overflow-wrap:anywhere}.note.bad{background:var(--red-soft);color:var(--red)}
 .setting{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
 .setting div{flex:1}.setting b{display:block}.setting p{margin:2px 0 0;color:var(--fg2)}
 .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.inline .field{flex:1;min-width:180px}
@@ -453,6 +462,7 @@ code{font-size:13px;background:var(--soft);padding:1px 6px;border-radius:4px}
 <symbol id="fail" viewBox="0 0 24 24"><path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/></symbol>
 <symbol id="folder" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.38l2 2H19.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></symbol>
 <symbol id="web" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 2.5 14.4 0 17M12 3.5c-2.5 2.6-2.5 14.4 0 17"/></symbol>
+<symbol id="link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></symbol>
 <symbol id="sync" viewBox="0 0 24 24"><path d="M5 11a7 7 0 0 1 12-4.5M19 13a7 7 0 0 1-12 4.5M17 3v3.5h-3.5M7 21v-3.5h3.5"/></symbol>
 </defs></svg>
 <main>
@@ -483,7 +493,9 @@ code{font-size:13px;background:var(--soft);padding:1px 6px;border-radius:4px}
 {{with .S.Config}}{{if .URL}}<a class="btn" href="{{.URL}}/drive/" target="_blank" rel="noopener"><svg class="ic"><use href="#web"/></svg>Open on the web</a>{{end}}{{end}}</div></header>
 {{with .S.Err}}<p class="err">{{.}}</p>{{end}}
 <h2>Recent files</h2>
-<ul class="rows" id="files">{{range .S.Files}}<li><svg class="ic g-{{glyph .State}}"><use href="#{{glyph .State}}"/></svg><span class="name" title="{{.Folder}}/{{.Path}}">{{base .Path}}</span><span class="state">{{file .}}</span></li>{{else}}<li class="empty">Files you change here or on your other computers show up as they sync.</li>{{end}}</ul>
+<p class="note" id="linkmsg" role="status" hidden></p>
+<ul class="rows" id="files">{{range .S.Files}}<li><svg class="ic g-{{glyph .State}}"><use href="#{{glyph .State}}"/></svg><span class="name" title="{{.Folder}}/{{.Path}}">{{base .Path}}</span><span class="state">{{file .}}</span>{{if ne .State "deleted"}}<button class="btn small" data-folder="{{.Folder}}" data-path="{{.Path}}" aria-label="Copy a link to {{base .Path}}"><svg class="ic"><use href="#link"/></svg></button>{{end}}</li>{{else}}<li class="empty">Files you change here or on your other computers show up as they sync.</li>{{end}}</ul>
+<form class="inline" id="anylink"><input class="field" name="local" placeholder="Any file or folder, e.g. ~/Drive/Drive/Reports" aria-label="File or folder to link to"><button class="btn"><svg class="ic"><use href="#link"/></svg>Copy link</button></form>
 
 <h2>Folders</h2>
 <ul class="rows" id="folders">{{range .S.Folders}}<li><svg class="ic"><use href="#folder"/></svg><span class="name">{{.Name}}</span><span class="state">{{line .}}</span></li>{{end}}</ul>
@@ -525,11 +537,38 @@ const tick = async () => {
     if (sum) sum.textContent = st.summary;
     // times in the viewer's own format, as on the web page
     const state = (f) => f.when ? 'Synced ' + new Date(f.when).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : f.state;
-    if (st.files.length) files.replaceChildren(...st.files.map(f => li(f.glyph, f.name, f.where, state(f))));
+    if (st.files.length) files.replaceChildren(...st.files.map(f => {
+      const l = li(f.glyph, f.name, f.where, state(f));
+      if (f.glyph !== 'x') {
+        const b = document.createElement('button');
+        b.className = 'btn small'; b.dataset.folder = f.folder; b.dataset.path = f.path;
+        b.setAttribute('aria-label', 'Copy a link to ' + f.name);
+        b.innerHTML = '<svg class="ic"><use href="#link"/></svg>'; l.append(b);
+      }
+      return l;
+    }));
     folders.replaceChildren(...st.folders.map(f => li('', f.name, '', f.state)));
     folders.querySelectorAll('li').forEach(l => l.insertAdjacentHTML('afterbegin', '<svg class="ic"><use href="#folder"/></svg>'));
   } catch (e) {}
 };
 if (files) { tick(); setInterval(tick, 2000); }
+// share links: the ship makes them; this asks it (a moment's round trip)
+const msg = document.getElementById('linkmsg');
+const say = (text, bad) => { msg.textContent = text; msg.className = 'note' + (bad ? ' bad' : ''); msg.hidden = false; };
+async function link(body) {
+  say('Asking your ship for a link…');
+  try {
+    const r = await (await fetch('/link', { method: 'POST', body: new URLSearchParams(body) })).json();
+    if (r.error) return say(r.error, true);
+    try { await navigator.clipboard.writeText(r.url); say('Link copied: ' + r.url); }
+    catch { say('Your link: ' + r.url); }
+  } catch { say('Drive didn’t answer. Try again.', true); }
+}
+document.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-folder]');
+  if (b) link({ folder: b.dataset.folder, path: b.dataset.path });
+});
+const any = document.getElementById('anylink');
+if (any) any.addEventListener('submit', (ev) => { ev.preventDefault(); if (any.local.value.trim()) link({ local: any.local.value.trim() }); });
 </script>
 </body></html>`))

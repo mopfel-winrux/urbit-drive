@@ -22,6 +22,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/atotto/clipboard"
 	mesa "github.com/mopfel-winrux/libmesa/bindings/go"
 	_ "modernc.org/sqlite"
 
@@ -53,6 +54,8 @@ func main() {
 		err = cmdRun(args)
 	case "status":
 		err = cmdStatus(args)
+	case "link":
+		err = cmdLink(args)
 	case "exclude", "include":
 		err = cmdSelective(cmd, args)
 	case "version":
@@ -70,6 +73,7 @@ func usage() {
        drive pair -url URL -code CODE [-name NAME] [-dir DIR] [-publisher ~ship] [-fake]
        drive run [-home DIR] [-port N]
        drive status [-home DIR]
+       drive link [-home DIR] PATH
        drive exclude|include [-home DIR] FOLDER PATH
        drive version`)
 	os.Exit(2)
@@ -125,11 +129,39 @@ func cmdRun(args []string) error {
 	fs.Parse(args)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	s, err := ui.Start(ctx, *home, ui.SessionOptions{Port: *port, Trace: *trace})
+	// headless, but with the local page (not opened), so `drive link` works
+	a := ui.NewApp(ctx, *home, ui.SessionOptions{Port: *port, Trace: *trace})
+	if err := a.Serve(); err != nil {
+		return err
+	}
+	if err := a.StartSync(); err != nil {
+		return err
+	}
+	<-ctx.Done()
+	a.Close()
+	return nil
+}
+
+// cmdLink asks the running Drive for a share link to a file or folder,
+// prints it, and copies it.
+func cmdLink(args []string) error {
+	fs := flag.NewFlagSet("link", flag.ExitOnError)
+	home := fs.String("home", ui.DefaultHome(), "state directory")
+	fs.Usage = func() { fmt.Fprintln(os.Stderr, "usage: drive link [-home DIR] PATH") }
+	fs.Parse(args)
+	if fs.NArg() != 1 {
+		fs.Usage()
+		os.Exit(2)
+	}
+	link, err := ui.AskRunning(*home, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return s.Wait()
+	fmt.Println(link)
+	if clipboard.WriteAll(link) == nil {
+		fmt.Fprintln(os.Stderr, "(copied)")
+	}
+	return nil
 }
 
 func cmdStatus(args []string) error {

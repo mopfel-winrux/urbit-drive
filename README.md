@@ -12,7 +12,7 @@ Each computer you sign in becomes a **moon** of your ship, with keys made on tha
 
 - **Sync a folder on every computer.** Install the desktop app (macOS, Windows, Linux), sign in with your ship's address and access code, and the folder syncs both ways.
 - **A Dropbox-style web app on your ship.** Browse folders, upload, download, rename, move and delete, create folders, and search. It's a tile in Landscape.
-- **Share links for anyone.** Copy a link to any file or folder and send it to someone without a ship. Links can expire or need a password, and you can turn them off at any time.
+- **Share links for anyone.** Copy a link to any file or folder and send it to someone without a ship. Your ship serves the link. You can get one from the web app, from a recent file in the desktop app's tray or settings page, or with `drive link <path>`. Links can expire or need a password, and you can turn them off at any time.
 - **Share folders with other ships.** Invite a ship with edit or view-only access. They get a copy on their ship and their computers, and edits flow both ways.
 - **Never lose a file.** When two computers change a file at once, Drive keeps both side by side as a "conflicted copy". Deleted files and earlier versions stay restorable for 30 days by default.
 - **See what changed.** Activity lists every edit, add and delete, from every computer and ship.
@@ -94,7 +94,7 @@ make test
 
 ## Status
 
-v0.3, tested between fake ships (`~zod`, `~bus`) with several computers each. Not yet tried on the live network or on real Macs and Windows machines. Empty folders made on a computer, and symlinks, aren't synced yet.
+v0.4, tested between fake ships (`~zod`, `~bus`) with several computers each. Not yet tried on the live network or on real Macs and Windows machines. Empty folders made on a computer, and symlinks, aren't synced yet.
 
 
 ## License
