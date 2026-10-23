@@ -49,6 +49,7 @@ type folder struct {
 	pending       *pending // our commit in flight
 	pulling       bool
 	live          bool // heard its head this run: don't commit on a stale base
+	readOnly      bool
 	scanning      bool
 	rescan        bool // a scan was asked for while one couldn't run
 	key           *shutKey
@@ -101,6 +102,8 @@ func New(cfg Config, db *sql.Conn) *Follower {
 		} else {
 			cfg.Log("subscribed to %s", cfg.Planet)
 		}
+	}, OnKick: func(n *mesa.Node, s mesa.Sub) {
+		debugf("kicked from %s %s; resubscribing", s.Ship, s.Path)
 	}}
 	f.pokes = &mesa.Pokes{Name: "drive", OnDone: func(n *mesa.Node, her mesa.Ship, agent string, seq uint64, err *mesa.Nack) {
 		if err != nil {
@@ -238,61 +241,89 @@ func safeName(s string) string {
 
 func (f *Follower) onFact(n *mesa.Node, s mesa.Sub, mark string, noun mesa.Noun) {
 	u, err := proto.ParseUpdate(noun)
+	debugf("fact %s %v", mark, noun)
 	if err != nil {
 		f.cfg.Log("bad fact: %v", err)
 		return
 	}
 	switch {
+	case u.Hello != nil:
+		for _, uf := range u.Hello.Folders {
+			f.takeFolder(uf)
+		}
+		for _, r := range u.Hello.Results {
+			f.takeResult(n, r)
+		}
 	case u.Folder != nil:
-		uf := u.Folder
-		fo, ok := f.folders[uf.Fid]
-		if !ok {
-			fo = &folder{fid: uf.Fid}
-			f.folders[uf.Fid] = fo
-			f.cfg.Log("folder %q (%s)", uf.Name, uf.Fid)
-		}
-		if fo.epoch != uf.Epoch {
-			fo.key, fo.keyAsked = nil, false
-		}
-		fo.name, fo.epoch, fo.head, fo.live = uf.Name, uf.Epoch, uf.Head, true
-		os.MkdirAll(f.dir(fo), 0o755)
-		f.saveFolder(fo)
-		f.pump(fo)
-		f.scanSoon(fo)
+		f.takeFolder(u.Folder)
 	case u.Head != nil:
 		if fo, ok := f.folders[u.Head.Fid]; ok && u.Head.Aeon > fo.head {
 			fo.head = u.Head.Aeon
 			f.saveFolder(fo)
 			f.pump(fo)
 		}
+	case u.Gone != "":
+		// left or unshared: stop syncing it, keep the files
+		if fo, ok := f.folders[u.Gone]; ok {
+			f.cfg.Log("folder %q is no longer shared with us; keeping its files", fo.name)
+			delete(f.folders, u.Gone)
+			f.exec(`DELETE FROM drive_folder WHERE fid = ?`, u.Gone)
+			f.exec(`DELETE FROM drive_file WHERE fid = ?`, u.Gone)
+		}
 	case u.Result != nil:
-		r := u.Result
-		if r.Who != n.Ship() {
-			return
+		f.takeResult(n, u.Result)
+	}
+}
+
+func (f *Follower) takeFolder(uf *proto.Folder) {
+	fo, ok := f.folders[uf.Fid]
+	if !ok {
+		fo = &folder{fid: uf.Fid}
+		f.folders[uf.Fid] = fo
+		f.cfg.Log("folder %q (%s)", uf.Name, uf.Fid)
+	}
+	if fo.epoch != uf.Epoch {
+		fo.key, fo.keyAsked = nil, false
+	}
+	fo.name, fo.epoch, fo.head, fo.live = uf.Name, uf.Epoch, uf.Head, true
+	if ro := uf.Role == "r"; ro != fo.readOnly {
+		fo.readOnly = ro
+		if ro {
+			f.cfg.Log("%q is read-only for us: local changes to it won't upload", fo.name)
 		}
-		for _, fo := range f.folders {
-			if fo.pending == nil || fo.pending.Cid != r.Cid {
-				continue
+	}
+	os.MkdirAll(f.dir(fo), 0o755)
+	f.saveFolder(fo)
+	f.pump(fo)
+	f.scanSoon(fo)
+}
+
+func (f *Follower) takeResult(n *mesa.Node, r *proto.Result) {
+	if r.Who != n.Ship() {
+		return
+	}
+	for _, fo := range f.folders {
+		if fo.pending == nil || fo.pending.Cid != r.Cid {
+			continue
+		}
+		if r.Err != "" {
+			f.cfg.Log("commit to %q failed: %s", fo.name, r.Err)
+			fo.pending = nil
+		} else {
+			f.cfg.Log("committed to %q at aeon %d", fo.name, r.Aeon)
+			if r.Aeon > fo.head {
+				fo.head = r.Aeon
 			}
-			if r.Err != "" {
-				f.cfg.Log("commit to %q failed: %s", fo.name, r.Err)
+			// fo.pending stays until we apply our wave (applyWave
+			// uses its stats), unless the commit changed nothing
+			if r.Aeon <= fo.synced {
 				fo.pending = nil
-			} else {
-				f.cfg.Log("committed to %q at aeon %d", fo.name, r.Aeon)
-				if r.Aeon > fo.head {
-					fo.head = r.Aeon
-				}
-				// fo.pending stays until we apply our wave (applyWave
-				// uses its stats), unless the commit changed nothing
-				if r.Aeon <= fo.synced {
-					fo.pending = nil
-				}
 			}
-			f.exec(`DELETE FROM drive_staged WHERE cid = ?`, r.Cid)
-			f.saveFolder(fo)
-			f.pump(fo)
-			f.scanSoon(fo)
 		}
+		f.exec(`DELETE FROM drive_staged WHERE cid = ?`, r.Cid)
+		f.saveFolder(fo)
+		f.pump(fo)
+		f.scanSoon(fo)
 	}
 }
 

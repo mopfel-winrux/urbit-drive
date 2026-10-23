@@ -268,6 +268,9 @@ const scanBudget = 256 << 20 // bytes of new chunks per commit
 // commit in flight.
 func (f *Follower) scanSoon(fo *folder) {
 	debugf("scanSoon %q scanning=%v pulling=%v pending=%v synced=%d head=%d", fo.name, fo.scanning, fo.pulling, fo.pending != nil, fo.synced, fo.head)
+	if fo.readOnly {
+		return
+	}
 	if fo.scanning || fo.pulling || fo.pending != nil || fo.synced < fo.head || !fo.live {
 		fo.rescan = true // whatever is blocking it scans again when done
 		return

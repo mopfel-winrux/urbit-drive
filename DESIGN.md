@@ -1,7 +1,9 @@
 # %drive — Dropbox-style sync over mesa
 
-Status: draft 0.2, 2026-10-23. Milestone 1 (vertical slice) works on a fake `~zod`:
-pairing, upload, download, edits, deletes, and both conflict paths.
+Status: draft 0.3, 2026-10-23. Milestones 1 and 2 work on fake `~zod` + `~bus`:
+pairing, sync, both conflict paths, sharing with read-only and read-write
+roles, relayed commits, unsharing and unpairing with key rotation. There is
+also a web page on the planet and a tray app on the device.
 
 A gall desk, `%drive`, turns a planet into a file-sync server. Native clients
 (Go, on [libmesa](https://github.com/mopfel-winrux/libmesa)) run on
@@ -115,13 +117,18 @@ had and gets nothing new.
 changes. Followers learn it from a gall subscription:
 
 ```
-watch /v1/folders          ;  facts: %drive-update
-  [%folder id name host epoch head]       on subscribe, for each visible folder
-  [%head id aeon]                         each commit
-  [%epoch id epoch]                       after a revoke
-  [%gone id]                              folder deleted or access revoked
-  [%result cid (each aeon tang)]          outcome of the follower's commit cid
+watch /v1/folders  (devices)  /v1/share/<fid>  (guests)   ;  %drive-update
+  [%hello folders=(list info) results=(list result)]  the only fact a watch starts with
+  [%folder fid name host epoch head role]             name, epoch (rekey) or role changed
+  [%head fid aeon]                                    each commit
+  [%result who cid (each aeon @t)]                    outcome of a commit
+  [%gone fid]                                         left, or unshared
 ```
+
+A watch is answered with **one** `%hello`. Ames kicks a subscriber once
+more than five facts on its flow are unacked (`msg.cong`). An earlier
+version sent a fact per folder plus one per replayed result, and a device
+with a few failed commits got stuck kicking and resubscribing forever.
 
 A follower watches afresh every time it starts. It leaves its old
 subscription, gets the `%folder` snapshot again, and reads the waves it is
@@ -196,7 +203,7 @@ epoch.
 **Fake ships** (development): keys are derived from ship names, so the agent
 registers fake keys for the moon and the client uses `FakeIdentity(moon)`.
 
-## Sharing (milestone 2)
+## Sharing (milestone 2, implemented)
 
 - The owner pokes its own `%drive` `[%share id ~guest %rw]`. `%drive` adds the
   member and pokes the guest's `%drive` with an invite
@@ -209,6 +216,20 @@ registers fake keys for the moon and the client uses `FakeIdentity(moon)`.
 - For a mirrored folder, `head` and the aeon numbers are the owner's.
   The guest only re-publishes them, so a guest's moons and the owner's moons
   see the same history.
+- A guest device's commit goes to its own planet. The planet reads the
+  chunks, publishes them at its own `/up/<hex>` (coop `/up`, whose key goes
+  to the hosts of folders it mirrors), and pokes the owner
+  `[%relay author device-name commit]`. The owner accepts it only from a
+  `%rw` member, for itself or one of its moons. It reads the chunks from the
+  guest's `/up` and applies the commit with the **device** as the wave's
+  author, so the device recognizes its own wave. The guest forwards the
+  `%result`.
+- `%r` members' devices learn their role from `%folder` and don't upload.
+  The planet refuses their commits anyway.
+- A mirror's local name gets ` (~owner)` appended if the guest already has a
+  folder with that name, because devices use the name as the directory.
+- Unsharing kicks the guest, pokes it `%uninvite`, and rekeys. Unpairing a
+  device rekeys every folder, mirrors included.
 
 ## Client
 
@@ -266,6 +287,16 @@ the same on every OS. The tray uses `fyne.io/systray`.
    chunk GC (`%cull`), quota display.
 4. **Packaging:** macOS/Windows builds, installers, tray polish, selective
    sync, signed releases, a published desk.
+
+## Known issues
+
+- Installing from a publisher: `|install ~zod %drive` on `~bus` stalled.
+  `~zod`'s clay logged `%clay-sing-indirect-data` for `care=%y case=[%ud 1]`
+  on the `|new-desk`-made desk. It's unclear whether this is a fake-ship or
+  clay quirk. The test installed `~bus` from a local copy instead. A real
+  publisher desk needs checking before release.
+- `done` (commit results) and the logs grow without bound until
+  milestone 3 adds retention.
 
 ## Open questions
 

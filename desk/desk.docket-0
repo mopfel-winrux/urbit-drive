@@ -1,8 +1,8 @@
-:~  title+'drive'
-    info+'One line about what this app does.'
+:~  title+'Drive'
+    info+'Sync folders across your devices and share them with other ships.'
     color+0xb.0e14
     image+'/drive/tile.svg'
-    version+[0 1 0]
+    version+[0 2 0]
     website+'https://example.com'
     license+'MIT'
     base+'drive'

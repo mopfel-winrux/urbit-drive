@@ -59,9 +59,25 @@
         host+s+(scot %p host.f)
         head+(numb head.f)
         epoch+(numb epoch.f)
+        role+s+role.f
         files+(numb ~(wyt by tree.f))
         bytes+(numb (roll ~(val by tree.f) |=([e=entry:drive n=@ud] (add n size.e))))
+      ::
+        :-  %members
+        :-  %a
+        %+  turn  ~(tap by members.f)
+        |=  [who=@p r=role:drive]
+        (pairs ~[ship+s+(scot %p who) role+s+r])
+      ::
+        :-  %behind
+        ?~  up.f  (numb 0)
+        (numb (sub (max goal.u.up.f head.f) head.f))
     ==
+  ::
+  ++  invite
+    |=  [[host=@p =fid:drive] i=invite:drive]
+    ^-  json
+    (pairs ~[host+s+(scot %p host) fid+s+fid name+s+name.i role+s+role.i])
   ::
   ++  tree
     |=  t=(map fpath:drive entry:drive)
@@ -91,8 +107,10 @@
     ^-  json
     %-  pairs
     ?-  -.u
+      %hello   ~[hello+(numb (lent folders.u))]
       %folder  ~[folder+(pairs ~[fid+s+fid.u name+s+name.u head+(numb head.u)])]
       %head    ~[head+(pairs ~[fid+s+fid.u aeon+(numb aeon.u)])]
+      %gone    ~[gone+s+fid.u]
     ::
         %result
       =/  ok=?  ?=(%& -.res.u)
@@ -126,6 +144,23 @@
     ::
       %unpair      [%unpair (slav %p (so val))]
       %new-folder  [%new-folder (so val)]
+      %leave       [%leave (so val)]
+    ::
+        %share
+      =/  [=fid:drive who=@t r=@t]  ((ot fid+so ship+so role+so ~) val)
+      [%share fid (slav %p who) ;;(role:drive r)]
+    ::
+        %unshare
+      =/  [=fid:drive who=@t]  ((ot fid+so ship+so ~) val)
+      [%unshare fid (slav %p who)]
+    ::
+        %accept
+      =/  [host=@t =fid:drive]  ((ot host+so fid+so ~) val)
+      [%accept (slav %p host) fid]
+    ::
+        %decline
+      =/  [host=@t =fid:drive]  ((ot host+so fid+so ~) val)
+      [%decline (slav %p host) fid]
     ==
   --
 --

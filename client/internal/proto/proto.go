@@ -177,13 +177,21 @@ func (c *Commit) Action() mesa.Value {
 }
 
 // Update is a fact on /v1/folders; exactly one of its parts is set.
+// A watch is answered with one Hello: every folder, and our results.
 type Update struct {
+	Hello  *Hello
 	Folder *Folder
 	Head   *struct {
 		Fid  string
 		Aeon uint64
 	}
 	Result *Result
+	Gone   string // a fid we no longer have
+}
+
+type Hello struct {
+	Folders []*Folder
+	Results []*Result
 }
 
 type Folder struct {
@@ -192,6 +200,7 @@ type Folder struct {
 	Host  mesa.Ship
 	Epoch uint64
 	Head  uint64
+	Role  string // "rw", or "r": we may not commit
 }
 
 type Result struct {
@@ -211,38 +220,56 @@ func ParseUpdate(n mesa.Noun) (*Update, error) {
 	u := &Update{}
 	tag, t := n.Head().Text(), n.Tail()
 	switch tag {
+	case "hello":
+		h := &Hello{}
+		for _, f := range t.Head().List() {
+			h.Folders = append(h.Folders, folderOf(f))
+		}
+		for _, r := range t.Tail().List() {
+			h.Results = append(h.Results, resultOf(r))
+		}
+		u.Hello = h
 	case "folder":
-		f := &Folder{Fid: t.Head().Text()}
-		t = t.Tail()
-		f.Name = t.Head().Text()
-		t = t.Tail()
-		f.Host = atomShip(t.Head())
-		t = t.Tail()
-		f.Epoch, f.Head = u64(t.Head()), u64(t.Tail())
-		u.Folder = f
+		u.Folder = folderOf(t)
 	case "head":
 		u.Head = &struct {
 			Fid  string
 			Aeon uint64
 		}{t.Head().Text(), u64(t.Tail())}
 	case "result":
-		r := &Result{Who: atomShip(t.Head())}
-		t = t.Tail()
-		r.Cid = u64(t.Head())
-		res := t.Tail()
-		if u64(res.Head()) == 0 {
-			r.Aeon = u64(res.Tail())
-		} else {
-			r.Err = res.Tail().Text()
-			if r.Err == "" {
-				r.Err = "rejected"
-			}
-		}
-		u.Result = r
+		u.Result = resultOf(t)
+	case "gone":
+		u.Gone = t.Text()
 	default:
 		return nil, fmt.Errorf("unknown update %%%s", tag)
 	}
 	return u, nil
+}
+
+func folderOf(t mesa.Noun) *Folder {
+	f := &Folder{Fid: t.Head().Text()}
+	t = t.Tail()
+	f.Name = t.Head().Text()
+	t = t.Tail()
+	f.Host = atomShip(t.Head())
+	t = t.Tail()
+	f.Epoch = u64(t.Head())
+	t = t.Tail()
+	f.Head, f.Role = u64(t.Head()), t.Tail().Text()
+	return f
+}
+
+func resultOf(t mesa.Noun) *Result {
+	r := &Result{Who: atomShip(t.Head())}
+	t = t.Tail()
+	r.Cid = u64(t.Head())
+	res := t.Tail()
+	if u64(res.Head()) == 0 {
+		r.Aeon = u64(res.Tail())
+	} else if r.Err = res.Tail().Text(); r.Err == "" {
+		r.Err = "rejected"
+	}
+	return r
 }
 
 // Dec is a number as it appears in the planet's paths (no dots).

@@ -3,18 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>drive</title>
+  <title>Drive</title>
   <meta name="theme-color" content="#0b0e14">
   <link rel="icon" href="/drive/tile.svg">
   <link rel="manifest" href="/drive/manifest.json" crossorigin="use-credentials">
   <link rel="stylesheet" href="/drive/style.css">
 </head>
 <body>
-  <header><h1 id="title" contenteditable="true" spellcheck="false">drive</h1><span id="status">connecting…</span></header>
+  <header><h1>Drive</h1><span id="ship" class="muted"></span><span id="status" class="muted">connecting…</span></header>
   <main>
-    <form id="add"><input id="text" placeholder="Add an item and press Enter" autocomplete="off"><button>Add</button></form>
-    <ul id="items"></ul>
+    <section id="invites-section" hidden>
+      <h2>Invitations</h2>
+      <ul id="invites" class="rows"></ul>
+    </section>
+
+    <section>
+      <h2>Folders</h2>
+      <div id="folders"></div>
+      <form id="new-folder" class="inline">
+        <input id="new-folder-name" placeholder="New folder name" autocomplete="off" required>
+        <button>Create</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Devices</h2>
+      <p class="muted">Each device is a moon of this ship. Pair one from the desktop client with this ship's address and <code>+code</code>.</p>
+      <ul id="devices" class="rows"></ul>
+    </section>
   </main>
+  <div id="toast" hidden></div>
   <!-- ship.js first (defines window.Ship), then the page logic -->
   <script src="/drive/ship.js"></script>
   <script src="/drive/app.js"></script>
