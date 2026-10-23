@@ -11,7 +11,9 @@
 #   APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD      notarization
 #   WINDOWS_PFX_BASE64, WINDOWS_PFX_PASSWORD
 # Variables:
-#   WINDOWS_BUILDS = true  once libmesa builds for Windows (it doesn't yet)
+#   WINDOWS_BUILDS = true  also build the Inno Setup installer (and sign) on
+#                          a Windows runner; the Windows zip is always
+#                          cross-compiled by the linux job
 name: release
 
 on:
@@ -54,6 +56,10 @@ jobs:
       - name: build and package
         working-directory: urbit-drive/client
         run: make dist-linux-${{ matrix.arch }}
+      - name: cross-compile for Windows (zip, unsigned)
+        if: matrix.arch == 'amd64'
+        working-directory: urbit-drive/client
+        run: make dist-windows-amd64
       - uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.arch }}
@@ -110,8 +116,7 @@ jobs:
           path: urbit-drive/client/dist/*
 
   windows:
-    # libmesa doesn't build for Windows yet (mingw compat headers, _open
-    # clashes, and the Go binding's syscall.Flock); turn this on after.
+    # the installer needs Inno Setup, so a Windows runner; opt in
     if: vars.WINDOWS_BUILDS == 'true'
     runs-on: windows-latest
     env:
@@ -150,7 +155,7 @@ jobs:
 
   release:
     needs: [linux, darwin, windows]
-    # windows is skipped until it's turned on; publish anyway
+    # the windows job is opt-in; publish without it
     if: always() && startsWith(github.ref, 'refs/tags/v') && needs.linux.result == 'success' && needs.darwin.result == 'success' && needs.windows.result != 'failure'
     runs-on: ubuntu-latest
     steps:

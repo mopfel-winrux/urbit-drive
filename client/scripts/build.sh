@@ -35,6 +35,12 @@ if [ ! -f "$PREFIX/include/mesa/engine.h" ]; then
   echo "libmesa -> $PREFIX"
   (cd "$LIBMESA" && "$ZIG" build -Dno-host=true -Doptimize=ReleaseFast -Dtarget="$T" -p "$PREFIX")
 fi
+# zig names Windows archives mesa.lib; the binding links libmesa*.a
+if [ -f "$PREFIX/lib/mesa.lib" ]; then
+  for a in mesa mesa-urcrypt mesa-sqlite; do
+    cp -f "$PREFIX/lib/$a.lib" "$PREFIX/lib/lib$a.a"
+  done
+fi
 
 # 2. the binding, linking that prefix
 rm -rf "$BIND"; mkdir -p "$BIND"

@@ -322,9 +322,10 @@ mid-replay doesn't re-apply other paths' history.
    - macOS: libmesa cross-builds, but the tray needs the macOS SDK, so
      macOS builds run on macOS CI runners. `Drive.app` and the dmg script
      haven't been run yet.
-   - Windows: blocked on libmesa's Windows port (`vendor/c3` headers vs
-     mingw, io-function name clashes, and the Go binding's `syscall.Flock`
-     store lock). The packaging (zip, Inno Setup script, icons) is ready.
+   - Windows: libmesa's core and its Go binding build for Windows (libmesa
+     10b79c6). `drive.exe` cross-compiles from Linux with `zig cc`, and the
+     release workflow ships the zip. The Inno Setup installer needs a Windows
+     runner (`WINDOWS_BUILDS=true`). Not yet run on Windows.
    - `.github/workflows/release.yml` publishes tagged builds to
      `mopfel-winrux/urbit-drive` releases, and signs them when the signing
      secrets are set. It has never run on GitHub.
