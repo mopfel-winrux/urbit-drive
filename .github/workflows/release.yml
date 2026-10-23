@@ -70,7 +70,7 @@ jobs:
       matrix:
         include:
           - { arch: arm64, os: macos-14 }
-          - { arch: amd64, os: macos-13 }
+          - { arch: amd64, os: macos-14 }   # Intel build, cross-compiled (macos-13 runners are retired)
     runs-on: ${{ matrix.os }}
     env:
       MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}

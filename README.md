@@ -76,5 +76,9 @@ cd client && go build -o bin/drive ./cmd/drive
 
 ## Status
 
-v0.1, tested between fake ships (`~zod`, `~bus`) with several computers each. Not yet tried on the live network or on real Macs and Windows machines. Empty folders made on a computer, and symlinks, aren't synced yet.
+v0.2, tested between fake ships (`~zod`, `~bus`) with several computers each. Not yet tried on the live network or on real Macs and Windows machines. Empty folders made on a computer, and symlinks, aren't synced yet.
 
+
+## License
+
+[MIT](LICENSE)
