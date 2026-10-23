@@ -6,3 +6,4 @@ client/bin/
 *.db
 *.db.lock
 *.key
+.bus-cookie

@@ -3,6 +3,7 @@ module github.com/mopfel-winrux/urbit-drive/client
 go 1.26.0
 
 require (
+	fyne.io/systray v1.12.2
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/mopfel-winrux/libmesa/bindings/go v0.0.0
 	modernc.org/sqlite v1.61.0
@@ -10,6 +11,7 @@ require (
 
 require (
 	github.com/dustin/go-humanize v1.1.0 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect

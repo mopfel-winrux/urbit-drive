@@ -1,5 +1,6 @@
 // drive keeps a folder in sync with your planet's %drive.
 //
+//	drive                      the tray app (pairs from a local page if needed)
 //	drive pair -url https://sampel-palnet.tlon.network -code ... -name laptop
 //	drive run
 //	drive status
@@ -11,7 +12,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -25,34 +25,20 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/mopfel-winrux/urbit-drive/client/internal/pair"
-	dsync "github.com/mopfel-winrux/urbit-drive/client/internal/sync"
+	"github.com/mopfel-winrux/urbit-drive/client/internal/ui"
 )
-
-type config struct {
-	Planet string `json:"planet"`
-	Moon   string `json:"moon"`
-	Name   string `json:"name"`
-	Dir    string `json:"dir"`
-	Fake   bool   `json:"fake,omitempty"`
-}
-
-func defaultHome() string {
-	d, err := os.UserConfigDir()
-	if err != nil {
-		d = "."
-	}
-	return filepath.Join(d, "drive")
-}
 
 func main() {
 	log.SetFlags(log.Ltime)
 	mesa.Logf = log.Printf
-	if len(os.Args) < 2 {
-		usage()
+	cmd, args := "tray", os.Args[1:]
+	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
+		cmd, args = args[0], args[1:]
 	}
-	cmd, args := os.Args[1], os.Args[2:]
 	var err error
 	switch cmd {
+	case "tray":
+		err = cmdTray(args)
 	case "pair":
 		err = cmdPair(args)
 	case "run":
@@ -68,128 +54,75 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `usage: drive pair -url URL -code CODE [-name NAME] [-dir DIR] [-publisher ~ship] [-fake]
+	fmt.Fprintln(os.Stderr, `usage: drive [tray] [-home DIR] [-port N]
+       drive pair -url URL -code CODE [-name NAME] [-dir DIR] [-publisher ~ship] [-fake]
        drive run [-home DIR] [-port N]
        drive status [-home DIR]`)
 	os.Exit(2)
 }
 
-func loadConfig(home string) (*config, error) {
-	b, err := os.ReadFile(filepath.Join(home, "config.json"))
-	if err != nil {
-		return nil, fmt.Errorf("not paired yet (run drive pair): %w", err)
+func cmdTray(args []string) error {
+	fs := flag.NewFlagSet("tray", flag.ExitOnError)
+	home := fs.String("home", ui.DefaultHome(), "state directory")
+	port := fs.Int("port", 0, "UDP port (0: any)")
+	fs.Parse(args)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	a := ui.NewApp(ctx, *home, ui.SessionOptions{Port: *port})
+	if err := a.Serve(); err != nil {
+		return err
 	}
-	var c config
-	return &c, json.Unmarshal(b, &c)
+	switch err := a.StartSync(); {
+	case errors.Is(err, ui.ErrNotPaired):
+		ui.Open(a.URL()) // the pairing form
+	case err != nil:
+		log.Printf("sync: %v", err) // shown in the tray and on the page
+	}
+	ui.RunTray(a)
+	return nil
 }
 
 func cmdPair(args []string) error {
 	fs := flag.NewFlagSet("pair", flag.ExitOnError)
-	home := fs.String("home", defaultHome(), "state directory")
+	home := fs.String("home", ui.DefaultHome(), "state directory")
 	url := fs.String("url", "", "the planet's web address")
 	code := fs.String("code", "", "the planet's +code")
 	host, _ := os.Hostname()
 	name := fs.String("name", host, "this device's name")
-	userHome, _ := os.UserHomeDir()
-	dir := fs.String("dir", filepath.Join(userHome, "Drive"), "folder to sync")
+	dir := fs.String("dir", ui.DefaultDir(), "folder to sync")
 	publisher := fs.String("publisher", "", "ship to install %drive from, if the planet lacks it")
 	fake := fs.Bool("fake", false, "the planet is a fake ship (urbit -F)")
 	fs.Parse(args)
 	if *url == "" || *code == "" {
 		usage()
 	}
-	if _, err := os.Stat(filepath.Join(*home, "config.json")); err == nil {
-		return fmt.Errorf("%s is already paired; use another -home or remove it", *home)
-	}
-	res, err := pair.Pair(pair.Options{
+	_, err := ui.Pair(*home, *dir, pair.Options{
 		URL: *url, Code: *code, Name: *name, Publisher: *publisher, Fake: *fake,
 		Log: func(f string, a ...any) { log.Printf(f, a...) },
 	})
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(*home, 0o700); err != nil {
-		return err
-	}
-	if res.Keyfile != "" {
-		if err := os.WriteFile(filepath.Join(*home, "moon.key"), []byte(res.Keyfile+"\n"), 0o600); err != nil {
-			return err
-		}
-	}
-	abs, _ := filepath.Abs(*dir)
-	c := config{Planet: res.Planet.String(), Moon: res.Moon.String(), Name: *name, Dir: abs, Fake: *fake}
-	b, _ := json.MarshalIndent(c, "", "  ")
-	if err := os.WriteFile(filepath.Join(*home, "config.json"), b, 0o600); err != nil {
-		return err
-	}
-	log.Printf("paired: %s is %s, syncing %s", *name, res.Moon, abs)
-	return nil
+	return err
 }
 
 func cmdRun(args []string) error {
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
-	home := fs.String("home", defaultHome(), "state directory")
+	home := fs.String("home", ui.DefaultHome(), "state directory")
 	port := fs.Int("port", 0, "UDP port (0: any)")
 	trace := fs.Bool("trace", false, "log every datagram")
 	fs.Parse(args)
-	c, err := loadConfig(*home)
-	if err != nil {
-		return err
-	}
-	moon, err := mesa.ParseShip(c.Moon)
-	if err != nil {
-		return err
-	}
-	planet, err := mesa.ParseShip(c.Planet)
-	if err != nil {
-		return err
-	}
-	var id *mesa.Identity
-	if c.Fake {
-		id = mesa.FakeIdentity(moon)
-	} else if id, err = mesa.LoadKeyfile(filepath.Join(*home, "moon.key")); err != nil {
-		return err
-	}
-	dbPath := filepath.Join(*home, "drive.db")
-	_, statErr := os.Stat(dbPath)
-	fresh := errors.Is(statErr, os.ErrNotExist)
-	st, err := mesa.OpenSQLite("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer st.Close()
-
-	f := dsync.New(dsync.Config{
-		Planet: planet, Root: c.Dir, Device: c.Name,
-		Log: func(f string, a ...any) { log.Printf(f, a...) },
-	}, st.Conn())
-	n, err := mesa.Open(mesa.Config{
-		Identity: id, Store: st, App: f, Helpers: f.Helpers(),
-		Port: *port, Breached: fresh && !c.Fake, Trace: *trace,
-	})
-	if err != nil {
-		return err
-	}
-	if err := f.Start(n); err != nil {
-		return err
-	}
-	log.Printf("%s (%s) syncing %s with %s", c.Name, moon, c.Dir, planet)
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	go func() {
-		if err := f.WatchFS(ctx); err != nil {
-			log.Printf("watcher: %v", err)
-		}
-	}()
-	return n.Run(ctx)
+	s, err := ui.Start(ctx, *home, ui.SessionOptions{Port: *port, Trace: *trace})
+	if err != nil {
+		return err
+	}
+	return s.Wait()
 }
 
 func cmdStatus(args []string) error {
 	fs := flag.NewFlagSet("status", flag.ExitOnError)
-	home := fs.String("home", defaultHome(), "state directory")
+	home := fs.String("home", ui.DefaultHome(), "state directory")
 	fs.Parse(args)
-	c, err := loadConfig(*home)
+	c, err := ui.LoadConfig(*home)
 	if err != nil {
 		return err
 	}
