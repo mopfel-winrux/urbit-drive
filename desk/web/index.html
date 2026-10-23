@@ -10,7 +10,8 @@
   <link rel="stylesheet" href="/drive/style.css">
 </head>
 <body>
-  <header><h1>Drive</h1><span id="ship" class="muted"></span><span id="status" class="muted">connecting…</span></header>
+  <header><img src="/drive/tile.svg" alt="" class="logo"><h1>Drive</h1><span id="ship" class="muted"></span><span id="status" class="muted">connecting…</span>
+    <a class="download" href="https://github.com/mopfel-winrux/urbit-drive/releases/latest" target="_blank" rel="noopener">Get the desktop app</a></header>
   <main>
     <section id="invites-section" hidden>
       <h2>Invitations</h2>
@@ -28,8 +29,19 @@
 
     <section>
       <h2>Devices</h2>
-      <p class="muted">Each device is a moon of this ship. Pair one from the desktop client with this ship's address and <code>+code</code>.</p>
+      <p class="muted">Each device is a moon of this ship. <a href="https://github.com/mopfel-winrux/urbit-drive/releases/latest" target="_blank" rel="noopener">Download the desktop app</a> for macOS, Windows or Linux, then pair it with this ship's address and <code>+code</code>.</p>
       <ul id="devices" class="rows"></ul>
+    </section>
+    <section>
+      <h2>Storage</h2>
+      <p id="stored" class="muted"></p>
+      <form id="retention" class="inline">
+        <label for="keep" class="muted">Keep deleted files and old versions for</label>
+        <input id="keep" type="number" min="1" max="3650" style="max-width:90px;flex:0">
+        <span class="muted">days</span>
+        <button>Save</button>
+        <button type="button" id="prune" class="quiet">Prune now</button>
+      </form>
     </section>
   </main>
   <div id="toast" hidden></div>

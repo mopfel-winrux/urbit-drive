@@ -1,0 +1,14 @@
+# Drive without a tray, as a systemd user service (headless machines).
+# Pair first (drive pair ...), then: systemctl --user enable --now drive
+[Unit]
+Description=Drive: sync folders with your Urbit planet
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=@BINDIR@/drive run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Drive
+GenericName=File sync
+Comment=Sync folders with your Urbit planet
+Exec=@BINDIR@/drive tray
+Icon=drive
+Terminal=false
+Categories=Network;FileTransfer;
+StartupNotify=false

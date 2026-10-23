@@ -7,3 +7,5 @@ client/bin/
 *.db.lock
 *.key
 .bus-cookie
+client/build/
+client/dist/

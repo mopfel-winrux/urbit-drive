@@ -6,8 +6,8 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"errors"
+	"fmt"
 	"html/template"
 	"log"
 	"net"
@@ -43,7 +43,10 @@ type State struct {
 	Pairing bool
 	Config  *Config
 	Folders []dsync.FolderStatus
-	Err     string
+	// Excluded is each folder's paths not synced here, by folder name.
+	Excluded map[string][]string
+	Err      string
+	Login    bool // we start at login
 }
 
 func NewApp(ctx context.Context, home string, o SessionOptions) *App {
@@ -84,7 +87,7 @@ func (a *App) StartSync() error {
 // Status is a snapshot for display.
 func (a *App) Status() State {
 	a.mu.Lock()
-	st := State{Pairing: a.pairing, Err: a.err}
+	st := State{Pairing: a.pairing, Err: a.err, Login: Autostart()}
 	sess := a.sess
 	a.mu.Unlock()
 	if c, err := LoadConfig(a.Home); err == nil {
@@ -94,6 +97,9 @@ func (a *App) Status() State {
 		st.Running = true
 		if fs, err := sess.Follower.Snapshot(); err == nil {
 			st.Folders = fs
+		}
+		if x, err := sess.Follower.Excluded(); err == nil {
+			st.Excluded = x
 		}
 	}
 	return st
@@ -151,6 +157,39 @@ func (a *App) Serve() error {
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
+	mux.HandleFunc("POST /autostart", func(w http.ResponseWriter, r *http.Request) {
+		if err := SetAutostart(a.Home, r.FormValue("on") == "1"); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	})
+	selective := func(include bool) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			a.mu.Lock()
+			s := a.sess
+			a.mu.Unlock()
+			if s == nil {
+				http.Error(w, "not syncing", http.StatusConflict)
+				return
+			}
+			folder, path := r.FormValue("folder"), r.FormValue("path")
+			var err error
+			if include {
+				err = s.Follower.Include(folder, path)
+			} else {
+				err = s.Follower.Exclude(folder, path)
+			}
+			if err != nil {
+				a.mu.Lock()
+				a.err = err.Error()
+				a.mu.Unlock()
+			}
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+		}
+	}
+	mux.HandleFunc("POST /exclude", selective(false))
+	mux.HandleFunc("POST /include", selective(true))
 	mux.HandleFunc("POST /reset", func(w http.ResponseWriter, r *http.Request) {
 		if r.FormValue("confirm") != "RESET" {
 			http.Error(w, "type RESET to confirm", http.StatusBadRequest)
@@ -296,6 +335,22 @@ code{font-size:13px}form.inline{display:inline}
 <form class="inline" method="post" action="/open"><button class="quiet">Open folder</button></form>
 {{if .URL}}<a href="{{.URL}}/drive/" target="_blank"><button class="quiet" type="button">Open on planet</button></a>{{end}}
 {{end}}
+{{if .S.Running}}
+<h2>Selective sync</h2>
+<p class="mute">Files and folders you exclude stay on your planet and your other devices, but not here.</p>
+<table>{{range $name, $xs := .S.Excluded}}{{range $xs}}<tr><td>{{$name}}/{{.}}</td><td>
+<form class="inline" method="post" action="/include"><input type="hidden" name="folder" value="{{$name}}"><input type="hidden" name="path" value="{{.}}"><button class="quiet">Include</button></form></td></tr>{{end}}{{end}}</table>
+<form method="post" action="/exclude">
+<label>Exclude from this device</label>
+<select name="folder">{{range .S.Folders}}<option>{{.Name}}</option>{{end}}</select>
+<input type="text" name="path" placeholder="a path in that folder, e.g. Videos/raw" required>
+<button class="quiet">Exclude</button></form>
+{{end}}
+<h2>Start at login</h2>
+<form method="post" action="/autostart">
+{{if .S.Login}}<p class="mute">Drive starts when you log in.</p><input type="hidden" name="on" value="0"><button class="quiet">Don't start at login</button>
+{{else}}<p class="mute">Drive doesn't start by itself.</p><input type="hidden" name="on" value="1"><button class="quiet">Start at login</button>{{end}}
+</form>
 <h2>Reset</h2>
 <p class="mute">Forget this pairing: stop syncing and delete the device's keys and sync state here. Your files stay. Unpair the moon on your planet too, from its Drive page.</p>
 <form method="post" action="/reset" onsubmit="return confirm('Forget this pairing?')">

@@ -1,9 +1,9 @@
 :~  title+'Drive'
     info+'Sync folders across your devices and share them with other ships.'
-    color+0xb.0e14
+    color+0x2a.62e0
     image+'/drive/tile.svg'
     version+[0 2 0]
-    website+'https://example.com'
+    website+'https://github.com/mopfel-winrux/urbit-drive'
     license+'MIT'
     base+'drive'
     site+/drive

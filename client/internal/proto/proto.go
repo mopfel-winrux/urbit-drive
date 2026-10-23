@@ -33,6 +33,31 @@ func BlobPath(fid string, epoch uint64, h chunk.Hash) string {
 	return fmt.Sprintf("/g/x/1/drive//1/f/%s/%d/blob/%s", fid, epoch, h)
 }
 
+func RockPath(fid string, epoch, floor uint64) string {
+	return fmt.Sprintf("/g/x/1/drive//1/f/%s/%d/rock/%d", fid, epoch, floor)
+}
+
+// FolderPrefix is the start of every path of a folder at an epoch.
+func FolderPrefix(fid string, epoch uint64) string {
+	return fmt.Sprintf("/g/x/1/drive//1/f/%s/%d/", fid, epoch)
+}
+
+// ParseRock reads a rock: the folder's files at its floor.
+func ParseRock(n mesa.Noun) (map[string]*Entry, error) {
+	out := map[string]*Entry{}
+	for _, pe := range n.List() {
+		if !pe.IsCell() {
+			return nil, errors.New("bad rock")
+		}
+		e, err := entryOf(pe.Tail())
+		if err != nil {
+			return nil, err
+		}
+		out[pe.Head().Text()] = e
+	}
+	return out, nil
+}
+
 // HashNoun is a hash as the planet's @ux: the digest, big-endian.
 func HashNoun(h chunk.Hash) *big.Int { return new(big.Int).SetBytes(h[:]) }
 
@@ -201,6 +226,7 @@ type Folder struct {
 	Epoch uint64
 	Head  uint64
 	Role  string // "rw", or "r": we may not commit
+	Floor uint64 // waves up to here are gone: read the rock at Floor
 }
 
 type Result struct {
@@ -255,7 +281,9 @@ func folderOf(t mesa.Noun) *Folder {
 	t = t.Tail()
 	f.Epoch = u64(t.Head())
 	t = t.Tail()
-	f.Head, f.Role = u64(t.Head()), t.Tail().Text()
+	f.Head = u64(t.Head())
+	t = t.Tail()
+	f.Role, f.Floor = t.Head().Text(), u64(t.Tail())
 	return f
 }
 

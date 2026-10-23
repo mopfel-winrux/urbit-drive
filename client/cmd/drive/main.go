@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	mesa "github.com/mopfel-winrux/libmesa/bindings/go"
@@ -28,10 +29,17 @@ import (
 	"github.com/mopfel-winrux/urbit-drive/client/internal/ui"
 )
 
+// version is set at release builds (-X main.version=...).
+var version = "dev"
+
 func main() {
 	log.SetFlags(log.Ltime)
 	mesa.Logf = log.Printf
 	cmd, args := "tray", os.Args[1:]
+	// older macOS passes -psn_<n> to apps started from the Finder
+	if len(args) > 0 && strings.HasPrefix(args[0], "-psn_") {
+		args = args[1:]
+	}
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
 		cmd, args = args[0], args[1:]
 	}
@@ -45,6 +53,10 @@ func main() {
 		err = cmdRun(args)
 	case "status":
 		err = cmdStatus(args)
+	case "exclude", "include":
+		err = cmdSelective(cmd, args)
+	case "version":
+		fmt.Println("drive", version)
 	default:
 		usage()
 	}
@@ -57,7 +69,9 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `usage: drive [tray] [-home DIR] [-port N]
        drive pair -url URL -code CODE [-name NAME] [-dir DIR] [-publisher ~ship] [-fake]
        drive run [-home DIR] [-port N]
-       drive status [-home DIR]`)
+       drive status [-home DIR]
+       drive exclude|include [-home DIR] FOLDER PATH
+       drive version`)
 	os.Exit(2)
 }
 
@@ -150,4 +164,33 @@ func cmdStatus(args []string) error {
 		fmt.Println(s)
 	}
 	return nil
+}
+
+// cmdSelective excludes a path in a folder from this device, or includes
+// it again. It runs a session briefly, so the tray or daemon must not
+// be running (use the settings page then).
+func cmdSelective(cmd string, args []string) error {
+	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
+	home := fs.String("home", ui.DefaultHome(), "state directory")
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "usage: drive %s [-home DIR] FOLDER PATH\n", cmd)
+	}
+	fs.Parse(args)
+	if fs.NArg() != 2 {
+		fs.Usage()
+		os.Exit(2)
+	}
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	s, err := ui.Start(ctx, *home, ui.SessionOptions{})
+	if err != nil {
+		return fmt.Errorf("%w (is drive already running? use its settings page)", err)
+	}
+	if cmd == "exclude" {
+		err = s.Follower.Exclude(fs.Arg(0), fs.Arg(1))
+	} else {
+		err = s.Follower.Include(fs.Arg(0), fs.Arg(1))
+	}
+	s.Stop()
+	return err
 }

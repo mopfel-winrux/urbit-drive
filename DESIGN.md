@@ -1,9 +1,7 @@
 # %drive — Dropbox-style sync over mesa
 
-Status: draft 0.3, 2026-10-23. Milestones 1 and 2 work on fake `~zod` + `~bus`:
-pairing, sync, both conflict paths, sharing with read-only and read-write
-roles, relayed commits, unsharing and unpairing with key rotation. There is
-also a web page on the planet and a tray app on the device.
+Status: draft 0.4, 2026-10-23. Milestones 1–3 work on fake `~zod` + `~bus`,
+and milestone 4 is done for Linux (see Milestones).
 
 A gall desk, `%drive`, turns a planet into a file-sync server. Native clients
 (Go, on [libmesa](https://github.com/mopfel-winrux/libmesa)) run on
@@ -277,16 +275,61 @@ timers and HTTP), so a Windows build needs only the core's C (urcrypt subset +
 SQLite) built with `zig cc`. Sync works only through files on disk, so it's
 the same on every OS. The tray uses `fyne.io/systray`.
 
+## Retention (milestone 3)
+
+- Each folder keeps waves `floor+1..head` in its log, and its tree at
+  `floor` as `base`. Every 6 hours, `prune-all` folds waves older than
+  `keep` (default 30 days; settable from the web page) into `base`, and
+  publishes `base` as `/rock/<floor>`. A follower behind the floor (a new
+  device, a device back after a long time, or a mirror) reads the rock and
+  then the waves after it. A device treats the rock as a wave from the
+  planet that deletes whatever it has that the rock doesn't.
+- Every replaced or deleted entry goes to `old` (newest first) for `keep`.
+  The web page lists them as **Trash** (paths no longer in the tree) and
+  **Earlier versions**. Any of them can be downloaded
+  (`/~/scry/drive/file/<fid>/<hash>.mime`) or restored. A restore is an
+  ordinary commit from the planet, so it works on mirrors too, by relay.
+- A chunk is live while any tree, base, live wave, version, commit in
+  flight, or pending mirror read refers to it. Pruning drops the others.
+- **Compaction through epochs.** Readers always ask for revision 1, so a
+  tombed binding can never come back at the same path. Instead, every folder
+  whose readable set changed moves to a new coop epoch (`+rekey`): what's
+  live is published under the new coop, and everything under the old one
+  is `%tomb`ed (its value replaced by a hash, freeing it). Revocation uses
+  the same move, so an old key reads nothing at all afterwards. A device
+  that sees a new epoch cancels its reads in flight and starts over with
+  the new key.
+
+## Selective sync
+
+A device can exclude a path (a file, or a folder and everything in it) from
+its copy of a folder: `drive exclude FOLDER PATH` or the settings page.
+Unedited local copies are removed. Excluded paths are neither downloaded nor
+scanned. Including a path again sets a **replay**: the device rereads the
+folder from its rock or its first wave, applying only ops under the included
+path, until it is back to where it was. The replay is persisted, so a crash
+mid-replay doesn't re-apply other paths' history.
+
 ## Milestones
 
-1. **Vertical slice:** desk + client on a fake `~zod`. Pair two moons, then
-   sync one folder both ways, including conflicted copies and deletes.
-2. **Sharing:** invites, mirrors, `%r`/`%rw`, revoke and epoch bumps,
-   testing with `~zod` + `~bus`.
-3. **Retention:** 30-day log pruning, rocks, trash, restore through the web UI,
-   chunk GC (`%cull`), quota display.
-4. **Packaging:** macOS/Windows builds, installers, tray polish, selective
-   sync, signed releases, a published desk.
+1. **Vertical slice:** done.
+2. **Sharing:** done (invites, mirrors, roles, relays, revocation).
+3. **Retention:** done (pruning, rocks, history, trash, restore, download,
+   chunk GC, storage display).
+4. **Packaging:**
+   - Linux amd64/arm64: static binaries, tarball with `install.sh` (desktop
+     entry, autostart, systemd user unit) and `.deb`. Built and tested here.
+   - macOS: libmesa cross-builds, but the tray needs the macOS SDK, so
+     macOS builds run on macOS CI runners. `Drive.app` and the dmg script
+     haven't been run yet.
+   - Windows: blocked on libmesa's Windows port (`vendor/c3` headers vs
+     mingw, io-function name clashes, and the Go binding's `syscall.Flock`
+     store lock). The packaging (zip, Inno Setup script, icons) is ready.
+   - `.github/workflows/release.yml` publishes tagged builds to
+     `mopfel-winrux/urbit-drive` releases, and signs them when the signing
+     secrets are set. It has never run on GitHub.
+   - Start-at-login toggle in the tray and the settings page; the new icon in
+     the tray, the installers and the planet tile.
 
 ## Known issues
 
@@ -295,8 +338,9 @@ the same on every OS. The tray uses `fyne.io/systray`.
   on the `|new-desk`-made desk. It's unclear whether this is a fake-ship or
   clay quirk. The test installed `~bus` from a local copy instead. A real
   publisher desk needs checking before release.
-- `done` (commit results) and the logs grow without bound until
-  milestone 3 adds retention.
+- `done` (commit results) isn't pruned yet. It's small, but it grows by one
+  entry per commit.
+- Empty directories and symlinks aren't synced.
 
 ## Open questions
 

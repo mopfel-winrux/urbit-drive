@@ -98,6 +98,7 @@ func (f *Follower) applyWave(fo *folder, w *proto.Wave) {
 		fo.pending = nil
 	}
 	fo.synced, fo.pulling = w.Aeon, false
+	f.endReplay(fo)
 	f.saveFolder(fo)
 	os.RemoveAll(f.cacheDir())
 	f.cfg.Log("%q at aeon %d (%d ops)", fo.name, w.Aeon, len(w.Ops))
@@ -117,6 +118,12 @@ func (f *Follower) applyWave(fo *folder, w *proto.Wave) {
 func (f *Follower) applyOp(fo *folder, op proto.Op, ours bool) error {
 	if !validRel(op.Path) {
 		return errors.New("unsafe path, skipped")
+	}
+	if fo.excluded(op.Path) {
+		return f.delFile(fo.fid, op.Path)
+	}
+	if fo.replaying(op.Path) {
+		return nil
 	}
 	abs := filepath.Join(f.dir(fo), filepath.FromSlash(op.Path))
 	r := f.getFile(fo.fid, op.Path)
@@ -306,10 +313,10 @@ func (f *Follower) scan(fo *folder) error {
 		rows[p] = r
 	}
 	q.Close()
-	dir, synced := f.dir(fo), fo.synced
+	dir, synced, exclude := f.dir(fo), fo.synced, append([]string(nil), fo.exclude...)
 	debugf("scan %q in %s (%d rows)", fo.name, dir, len(rows))
 	go func() {
-		res := walk(dir, rows)
+		res := walk(dir, rows, exclude)
 		err := f.n.Do(func() error { return f.finishScan(fo, synced, res) })
 		if err != nil {
 			f.cfg.Log("scan %q: %v", fo.name, err)
@@ -319,7 +326,8 @@ func (f *Follower) scan(fo *folder) error {
 	return nil
 }
 
-func walk(dir string, rows map[string]row) *scanned {
+func walk(dir string, rows map[string]row, exclude []string) *scanned {
+	skip := &folder{exclude: exclude}
 	res := &scanned{stats: map[string]stat{}, touches: map[string]stat{}, chunks: map[chunk.Hash][]byte{}}
 	seen := map[string]bool{}
 	budget := scanBudget
@@ -336,11 +344,17 @@ func walk(dir string, rows map[string]row) *scanned {
 			}
 			return nil
 		}
+		rel, _ := filepath.Rel(dir, abs)
+		rel = filepath.ToSlash(rel)
+		if skip.excluded(rel) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if !d.Type().IsRegular() {
 			return nil // directories are implied; links aren't synced yet
 		}
-		rel, _ := filepath.Rel(dir, abs)
-		rel = filepath.ToSlash(rel)
 		if !validRel(rel) {
 			return nil
 		}

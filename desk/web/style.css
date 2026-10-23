@@ -31,3 +31,12 @@ table.files td { padding: 4px 0; border-bottom: 1px solid var(--line); overflow-
 td.num, .num { text-align: right; white-space: nowrap; padding-left: 12px; font-variant-numeric: tabular-nums; }
 #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--line); padding: 8px 14px; border-radius: 8px; max-width: calc(100% - 32px); }
 #toast.bad { color: var(--bad); }
+header .logo { width: 28px; height: 28px; align-self: center; }
+header .download { margin-left: auto; color: var(--accent); text-decoration: none; font-size: 14px; }
+header .download:hover { text-decoration: underline; }
+a { color: var(--accent); }
+#status { font-size: 13px; }
+details { padding: 6px 0; border-bottom: 1px solid var(--line); }
+details summary { cursor: pointer; overflow-wrap: anywhere; }
+details .rows li { padding-left: 16px; }
+form.inline label { align-self: center; }

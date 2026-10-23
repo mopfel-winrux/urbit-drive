@@ -5,6 +5,7 @@
 ::    (+coop:lib), every binding at revision 1:
 ::
 ::      /g/x/1/drive//1/f/<fid>/<epoch>/wave/<aeon>   -> wave
+::      /g/x/1/drive//1/f/<fid>/<epoch>/rock/<floor>  -> (list [fpath entry])
 ::      /g/x/1/drive//1/f/<fid>/<epoch>/blob/<hex>    -> chunk
 ::
 ::    A device commits with a %commit poke naming chunks by hash. We read
@@ -15,14 +16,21 @@
 ::    %drive mirrors it. A mirror follows the host (/v1/share/<fid>, and
 ::    the same remote scries a device uses), republishes each wave to its
 ::    own devices under its own coop, and relays their commits to the
-::    host, serving their chunks at its own /up/<hex>. Removing a member
-::    or a device moves a folder to a new coop epoch: gall can't drop a
-::    coop's key yet, so we publish everything again under a new one.
+::    host, serving their chunks at its own /up/<hex>.
+::
+::    Retention: waves older than [keep] are folded into the folder's
+::    base, published as a rock at its floor; replaced and deleted files
+::    stay restorable for [keep]; chunks nothing refers to are dropped.
+::    Readers always ask for revision 1, so nothing is ever rebound:
+::    instead a folder moves to a new coop epoch (+rekey), republishing
+::    what's live and tombing everything under the old one. Removing a
+::    member or a device does the same, so old keys read nothing.
 ::
 ::    pokes:   %drive-action (nouns from devices and ships), %json from
 ::             the browser
 ::    watch:   /v1/folders (our devices), /v1/share/<fid> (guests)
-::    scries:  /x/version /x/state /x/tree/<fid> /x/pair/<moon> (json)
+::    scries:  /x/version /x/state /x/tree/<fid> /x/old/<fid>
+::             /x/pair/<moon> (json), /x/file/<fid>/<hex> (mime)
 ::             /c/f/<fid>/<epoch>/<ship>, /c/up/<ship>: coop key checks
 ::
 /-  *drive
@@ -31,9 +39,10 @@
 +$  versioned-state
   $%  state-0
       state-1
+      state-2
   ==
-+$  state-1
-  $:  %1
++$  state-2
+  $:  %2
       devices=(map ship device)
       folders=(map fid folder)
       blobs=(map hash chunk)
@@ -42,7 +51,34 @@
       done=(map [ship @uv] (each aeon @t))    ::  results, for resent commits
       invites=(map [ship fid] invite)
       upped=(set hash)                        ::  %tend'ed at /up, for hosts
+      keep=@dr                                ::  how long history lasts
   ==
+::  state-1: before retention
+::
++$  state-1
+  $:  %1
+      devices=(map ship device)
+      folders=(map fid folder-1)
+      blobs=(map hash chunk)
+      jobs=(map [ship @uv] job)
+      want=(jug hash [ship @uv])
+      done=(map [ship @uv] (each aeon @t))
+      invites=(map [ship fid] invite)
+      upped=(set hash)
+  ==
++$  folder-1
+  $:  name=@t
+      host=ship
+      head=aeon
+      epoch=@ud
+      tree=(map fpath entry)
+      log=((mop aeon wave) lth)
+      pub=(set hash)
+      members=(map ship role)
+      =role
+      up=(unit mirror-1)
+  ==
++$  mirror-1  [epoch=@ud goal=aeon busy=? wave=(unit wave) need=(set hash)]
 ::  state-0: before sharing
 ::
 +$  state-0
@@ -64,12 +100,43 @@
       pub=(set hash)
   ==
 +$  job-0  [src=ship =commit need=(set hash)]
+::
+++  zero-to-one
+  |=  s=state-0
+  ^-  state-1
+  =/  fol
+    %-  ~(run by folders.s)
+    |=  f=folder-0
+    ^-  folder-1
+    [name host head epoch tree log pub ~ %rw ~]:f
+  =/  jos
+    %-  ~(run by jobs.s)
+    |=  j=job-0
+    ^-  job
+    [src.j (scot %p src.j) commit.j need.j]
+  [%1 devices.s fol blobs.s jos want.s done.s ~ ~]
+::
+++  one-to-two
+  |=  s=state-1
+  ^-  state-2
+  =/  fol
+    %-  ~(run by folders.s)
+    |=  f=folder-1
+    ^-  folder
+    =/  up=(unit mirror)
+      ?~  up.f  ~
+      =*  m  u.up.f
+      `[epoch.m goal.m 0 busy.m wave.m ~ need.m]
+    [name.f host.f head.f epoch.f tree.f log.f pub.f members.f role.f up 0 ~ ~]
+  [%2 devices.s fol blobs.s jobs.s want.s done.s invites.s upped.s ~d30]
+::
 +$  card  card:agent:gall
 ++  on-log  ((on aeon wave) lth)
 ++  max-chunk  0x40.0000                      ::  4 MiB
+++  prune-every  ~h6
 --
 ::
-=|  state-1
+=|  state-2
 =*  state  -
 %-  agent:dbug
 ^-  agent:gall
@@ -81,8 +148,13 @@
 ::
 ++  on-init
   ^-  (quip card _this)
+  =.  keep  ~d30
   =^  cards  state  (new-folder:hc 'Drive')
-  [[[%pass /germ/up %germ /up] cards] this]
+  :_  this
+  :*  [%pass /germ/up %germ /up]
+      [%pass /prune %arvo %b %wait (add now.bowl prune-every)]
+      cards
+  ==
 ::
 ++  on-save  !>(state)
 ::
@@ -90,22 +162,13 @@
   |=  old=vase
   ^-  (quip card _this)
   =/  ver  !<(versioned-state old)
-  ?-    -.ver
-      %1  [~ this(state ver)]
-      %0
-    =/  fol
-      %-  ~(run by folders.ver)
-      |=  f=folder-0
-      ^-  folder
-      [name host head epoch tree log pub ~ %rw ~]:f
-    =/  jos
-      %-  ~(run by jobs.ver)
-      |=  j=job-0
-      ^-  job
-      [src.j (scot %p src.j) commit.j need.j]
-    :-  [%pass /germ/up %germ /up]~
-    this(state [%1 devices.ver fol blobs.ver jos want.ver done.ver ~ ~])
-  ==
+  =|  cards=(list card)
+  =?  cards  ?=(%0 -.ver)  [[%pass /germ/up %germ /up] cards]
+  =?  ver  ?=(%0 -.ver)  (zero-to-one ver)
+  =?  cards  ?=(%1 -.ver)  [[%pass /prune %arvo %b %wait (add now.bowl prune-every)] cards]
+  =?  ver  ?=(%1 -.ver)  (one-to-two ver)
+  ?>  ?=(%2 -.ver)
+  [cards this(state ver)]
 ::
 ++  on-poke
   |=  [=mark =vase]
@@ -122,8 +185,8 @@
   |=  =(pole knot)
   ^-  (quip card _this)
   ?+    pole  (on-watch:def pole)
-  ::  our devices: every folder's head, then the results of this
-  ::  device's commits (a commit that changed nothing has no wave)
+  ::  our devices: every folder, and the results of this device's
+  ::  commits (a commit that changed nothing has no wave), in one fact
   ::
       [%v1 %folders ~]
     ?>  (allowed:hc src.bowl)
@@ -133,7 +196,7 @@
     :+  %hello
       (turn ~(tap by folders) |=([=fid f=folder] (folder-info:hc fid f)))
     (results:hc |=(who=ship =(who src.bowl)))
-  ::  a guest: the folder's head, and its devices' results
+  ::  a guest: the folder, and its devices' results
   ::
       [%v1 %share =fid ~]
     =/  f  (~(got by folders) fid.pole)
@@ -151,9 +214,10 @@
   ^-  (unit (unit cage))
   ?+    pole  (on-peek:def pole)
       [%x %version ~]
-    ``json+!>(`json`(pairs:enjs:format ~[version+s+'0.2.0']))
+    ``json+!>(`json`(pairs:enjs:format ~[version+s+'0.3.0']))
   ::
       [%x %state ~]
+    =/  bytes  (roll ~(val by blobs) |=([c=chunk n=@ud] (add n len.c)))
     :^  ~  ~  %json
     !>  ^-  json
     %-  pairs:enjs:format
@@ -161,11 +225,32 @@
         devices+a+(turn ~(tap by devices) device:enjs:lib)
         folders+a+(turn ~(tap by folders) folder:enjs:lib)
         invites+a+(turn ~(tap by invites) invite:enjs:lib)
+        keep+(numb:enjs:format (div keep ~d1))
+        :-  %stored
+        (pairs:enjs:format ~[chunks+(numb:enjs:format ~(wyt by blobs)) bytes+(numb:enjs:format bytes)])
     ==
   ::
       [%x %tree fid=@ ~]
     ?~  f=(~(get by folders) fid.pole)  [~ ~]
     ``json+!>((tree:enjs:lib tree.u.f))
+  ::
+      [%x %old fid=@ ~]
+    ?~  f=(~(get by folders) fid.pole)  [~ ~]
+    ``json+!>((old:enjs:lib tree.u.f old.u.f))
+  ::  a file's contents, by its hash: current, or a version in history
+  ::
+      [%x %file fid=@ hx=@ ~]
+    ?~  f=(~(get by folders) fid.pole)  [~ ~]
+    =/  h  (rash hx.pole hex)
+    =/  vs=(list version)  (zing ~(val by old.u.f))
+    =/  es=(list entry)
+      (weld ~(val by tree.u.f) (turn vs |=(v=version entry.v)))
+    ?~  hit=(skim es |=(e=entry =(h hash.e)))  [~ ~]
+    ?.  (levy chunks.i.hit |=(c=hash (~(has by blobs) c)))  [~ ~]
+    =/  dat
+      %+  can  3
+      (turn chunks.i.hit |=(c=hash =+((~(got by blobs) c) [len dat])))
+    ``mime+!>(`mime`[/application/octet-stream size.i.hit dat])
   ::
       [%x %pair moon=@ ~]
     =/  moon  (slav %p moon.pole)
@@ -217,16 +302,21 @@
       ?~(gag ~ `gag)
     [cards this]
   ::
-      [%pull @ @ @ ~]
+      [%pull @ @ @ @ ~]
     ?>  ?=([%ames %sage *] sign)
     =*  gag  q.sage.sign
     =^  cards  state
-      (take-pull:hc i.t.wire i.t.t.wire i.t.t.t.wire ?~(gag ~ `gag))
+      (take-pull:hc i.t.wire i.t.t.wire [i.t.t.t i.t.t.t.t]:wire ?~(gag ~ `gag))
     [cards this]
   ::
       [%retry @ ~]
     =^  cards  state  (pull:hc i.t.wire)
     [cards this]
+  ::
+      [%prune ~]
+    =^  cards  state  prune-all:hc
+    :_  this
+    [[%pass /prune %arvo %b %wait (add now.bowl prune-every)] cards]
   ::
       [%pair *]  `this
   ==
@@ -264,10 +354,20 @@
   ^-  card
   [%give %fact ~[/v1/folders /v1/share/[fid]] %drive-update !>(update)]
 ::
+++  tend
+  |=  [coo=path =path =noun]
+  ^-  card
+  [%pass /tend %tend coo path %noun noun]
+::
+++  tomb
+  |=  =spur
+  ^-  card
+  [%pass /tomb %tomb [%ud 1] spur]
+::
 ++  folder-info
   |=  [=fid f=folder]
   ^-  info
-  [fid name.f host.f epoch.f head.f role.f]
+  [fid name.f host.f epoch.f head.f role.f floor.f]
 ::
 ++  folder-update
   |=  [=fid f=folder]
@@ -323,7 +423,8 @@
     =|  cards=(list card)
     |-  ^-  (quip card _state)
     ?~  fids  [cards state]
-    =^  caz  state  (rekey i.fids)
+    =/  f  (~(got by folders) i.fids)
+    =^  caz  state  (rekey i.fids ~ pub.f floor.f)
     $(fids t.fids, cards (weld cards caz))
   ::
       %new-folder
@@ -353,7 +454,7 @@
     =/  f  (hosted fid.act)
     ?.  (~(has by members.f) who.act)  `state
     =.  folders  (~(put by folders) fid.act f(members (~(del by members.f) who.act)))
-    =^  cards  state  (rekey fid.act)
+    =^  cards  state  (rekey fid.act ~ pub.f floor.f)
     :_  state
     :+  [%give %kick ~[/v1/share/[fid.act]] `who.act]
       :*  %pass  /uninvite/[fid.act]/(scot %p who.act)
@@ -383,7 +484,9 @@
     =/  inv  (~(got by invites) [host.act fid.act])
     ?<  (~(has by folders) fid.act)
     =/  =folder
-      [(fresh-folder-name name.inv host.act) host.act 0 0 ~ ~ ~ ~ role.inv `[0 0 | ~ ~]]
+      :*  (fresh-folder-name name.inv host.act)  host.act  0  0  ~  ~  ~  ~
+          role.inv  `[0 0 0 | ~ ~ ~]  0  ~  ~
+      ==
     :_  %_  state
           folders  (~(put by folders) fid.act folder)
           invites  (~(del by invites) [host.act fid.act])
@@ -411,13 +514,35 @@
     ?>  =(%rw (~(gut by members.f) src.bowl %r))
     ?>  |(=(author.act src.bowl) =(src.bowl (sein:title our.bowl now.bowl author.act)))
     (take-commit author.act src.bowl by.act commit.act)
+  ::  an old version back in place, by an ordinary commit from us
+  ::
+      %restore
+    ?>  =(our src):bowl
+    =/  f  (~(got by folders) fid.act)
+    =/  vs  (~(get ja old.f) path.act)
+    ?~  hit=(skim vs |=(v=version =(hash.act hash.entry.v)))
+      ~|(no-such-version+path.act !!)
+    =/  cur  (bind (~(get by tree.f) path.act) |=(e=entry hash.e))
+    =/  =commit
+      [(end 6 eny.bowl) fid.act head.f [path.act cur `entry.i.hit]~]
+    (take-commit our.bowl our.bowl 'restore' commit)
+  ::
+      %keep
+    ?>  =(our src):bowl
+    ?>  (gte keep.act ~m1)
+    `state(keep keep.act)
+  ::
+      %prune
+    ?>  =(our src):bowl
+    prune-all
   ==
 ::
 ++  new-folder
   |=  name=@t
   ^-  (quip card _state)
   =/  =fid  (crip ((x-co:co 16) (end 6 eny.bowl)))
-  =/  =folder  [(fresh-folder-name name our.bowl) our.bowl 0 0 ~ ~ ~ ~ %rw ~]
+  =/  =folder
+    [(fresh-folder-name name our.bowl) our.bowl 0 0 ~ ~ ~ ~ %rw ~ 0 ~ ~]
   :_  state(folders (~(put by folders) fid folder))
   :~  [%pass /germ/[fid] %germ (coop:lib fid 0)]
       (give fid (folder-update fid folder))
@@ -443,30 +568,65 @@
   ^-  (quip card _state)
   :-  ~[(give fid [%gone fid])]
   state(folders (~(del by folders) fid))
-::  +rekey: publish the folder under a new coop epoch
+::  +rekey: move a folder to a new coop epoch. Publish what's live under
+::  it (waves after the floor, the rock at it, [pub]); tomb what was
+::  under the old one: waves [gone] and the log's, the rock at
+::  [was-floor], and chunks [was-pub].
 ::
 ++  rekey
-  |=  =fid
+  |=  [=fid gone=(list aeon) was-pub=(set hash) was-floor=aeon]
   ^-  (quip card _state)
   =/  f  (~(got by folders) fid)
+  =/  was  (coop:lib fid epoch.f)
   =.  epoch.f  +(epoch.f)
   =/  coo  (coop:lib fid epoch.f)
+  =/  ws  (tap:on-log log.f)
   :_  state(folders (~(put by folders) fid f))
   ;:  weld
     [%pass /germ/[fid] %germ coo]~
+    (turn ws |=([a=aeon w=wave] (tend coo /wave/(dec:lib a) w)))
   ::
-    %+  turn  (tap:on-log log.f)
-    |=  [a=aeon w=wave]
-    ^-  card
-    [%pass /tend %tend coo /wave/(dec:lib a) %noun w]
+    ?:  =(0 floor.f)  ~
+    [(tend coo /rock/(dec:lib floor.f) ~(tap by base.f))]~
   ::
-    %+  turn  ~(tap in pub.f)
-    |=  h=hash
-    ^-  card
-    [%pass /tend %tend coo /blob/(hext:lib h) %noun (~(got by blobs) h)]
+    (turn ~(tap in pub.f) |=(h=hash (tend coo /blob/(hext:lib h) (~(got by blobs) h))))
+    (turn (weld gone (turn ws head)) |=(a=aeon (tomb (weld was /wave/(dec:lib a)))))
   ::
+    ?:  =(0 was-floor)  ~
+    [(tomb (weld was /rock/(dec:lib was-floor)))]~
+  ::
+    (turn ~(tap in was-pub) |=(h=hash (tomb (weld was /blob/(hext:lib h)))))
     [(give fid (folder-update fid f))]~
   ==
+::  +entry-chunks: every chunk of some entries
+::
+++  entry-chunks
+  |=  es=(list entry)
+  ^-  (set hash)
+  =|  out=(set hash)
+  |-
+  ?~  es  out
+  $(es t.es, out (~(gas in out) chunks.i.es))
+::
+++  wave-entries
+  |=  ws=(list wave)
+  ^-  (list entry)
+  =|  out=(list entry)
+  |-
+  ?~  ws  out
+  =/  os=(list op)  ops.i.ws
+  |-
+  ?~  os  ^$(ws t.ws)
+  ?~  new.i.os  $(os t.os)
+  $(os t.os, out [u.new.i.os out])
+::  +readable: the chunks a folder's readers may need: its base's and
+::  its waves'
+::
+++  readable
+  |=  f=folder
+  ^-  (set hash)
+  %-  entry-chunks
+  (weld ~(val by base.f) (wave-entries (turn (tap:on-log log.f) tail)))
 ::  +named: the chunks a commit names
 ::
 ++  named
@@ -477,6 +637,92 @@
   ?~  ops.commit  out
   =/  new  new.i.ops.commit
   $(ops.commit t.ops.commit, out ?~(new out (weld chunks.u.new out)))
+::  +prune-all: fold waves older than [keep] into their folder's base,
+::  forget history as old, drop chunks nothing refers to, and move each
+::  folder whose readable set changed to a new epoch
+::
+++  prune-all
+  ^-  (quip card _state)
+  =/  cutoff  (sub now.bowl keep)
+  =/  fids  ~(tap in ~(key by folders))
+  =|  moved=(list [=fid gone=(list aeon) pub=(set hash) floor=aeon])
+  ::  waves and history
+  ::
+  =^  moved  folders
+    |-  ^-  [_moved _folders]
+    ?~  fids  [moved folders]
+    =/  f  (~(got by folders) i.fids)
+    =.  old.f
+      %-  malt
+      %+  murn  ~(tap by old.f)
+      |=  [p=fpath vs=(list version)]
+      =/  k  (skim vs |=(v=version (gte when.v cutoff)))
+      ?~(k ~ `[p k])
+    =/  ws  (tap:on-log log.f)
+    =|  gone=(list aeon)
+    =/  was  [pub.f floor.f]
+    |-
+    =/  stop=?  ?~(ws & (gte when.val.i.ws cutoff))
+    ?:  |(stop ?=(~ ws))
+      =.  folders  (~(put by folders) i.fids f)
+      ?~  gone  ^$(fids t.fids)
+      ^$(fids t.fids, moved [[i.fids gone was] moved])
+    =*  w  val.i.ws
+    =.  base.f
+      =/  os=(list op)  ops.w
+      |-  ^+  base.f
+      ?~  os  base.f
+      ?~  new.i.os  $(os t.os, base.f (~(del by base.f) path.i.os))
+      $(os t.os, base.f (~(put by base.f) path.i.os u.new.i.os))
+    $(ws t.ws, gone [aeon.w gone], floor.f aeon.w, log.f +:(del:on-log log.f aeon.w))
+  ::  chunks: live if a tree, base, wave, version, commit or mirror
+  ::  still needs it
+  ::
+  =/  fs  ~(val by folders)
+  =/  live=(set hash)
+    =|  out=(list entry)
+    |-  ^-  (set hash)
+    ?~  fs  (entry-chunks out)
+    =*  f  i.fs
+    =/  vs=(list version)  (zing ~(val by old.f))
+    =/  pend=(list wave)  ?~(up.f ~ ?~(wave.u.up.f ~ [u.wave.u.up.f ~]))
+    =/  rok=(list entry)  ?~(up.f ~ ?~(rock.u.up.f ~ ~(val by u.rock.u.up.f)))
+    =/  ws=(list wave)  (turn (tap:on-log log.f) tail)
+    %=  $
+      fs   t.fs
+      out  ;:  weld
+             out
+             ~(val by tree.f)
+             ~(val by base.f)
+             (wave-entries ws)
+             (turn vs |=(v=version entry.v))
+             (wave-entries pend)
+             rok
+           ==
+    ==
+  =.  live
+    %-  ~(gas in live)
+    (zing (turn ~(val by jobs) |=(j=job (named commit.j))))
+  =/  dead=(list hash)  (skip ~(tap in ~(key by blobs)) |=(h=hash (~(has in live) h)))
+  =/  dead-up  (skim dead |=(h=hash (~(has in upped) h)))
+  =.  blobs  (~(dif by blobs) (malt (turn dead |=(h=hash [h *chunk]))))
+  =.  upped  (~(dif in upped) (silt dead-up))
+  ::  every folder whose readable set changed moves to a new epoch
+  ::
+  =/  mov  (malt moved)
+  =.  fids  ~(tap in ~(key by folders))
+  =/  cards=(list card)  (turn dead-up |=(h=hash (tomb /up/(hext:lib h))))
+  |-  ^-  (quip card _state)
+  ?~  fids  [cards state]
+  =/  f  (~(got by folders) i.fids)
+  =/  now-pub  (readable f)
+  =/  m  (~(get by mov) i.fids)
+  ?:  &(?=(~ m) =(now-pub pub.f))  $(fids t.fids)
+  =/  [gone=(list aeon) was-pub=(set hash) was-floor=aeon]
+    ?~(m [~ pub.f floor.f] u.m)
+  =.  folders  (~(put by folders) i.fids f(pub now-pub))
+  =^  caz  state  (rekey i.fids gone was-pub was-floor)
+  $(fids t.fids, cards (weld cards caz))
 ::  +take-commit: [author]'s commit, sent by [src] (the author, or the
 ::  guest relaying for it); settle now, or read the chunks we lack first
 ::
@@ -563,10 +809,7 @@
         upped  (~(gas in upped) new)
       ==
   %+  snoc
-    %+  turn  new
-    |=  h=hash
-    ^-  card
-    [%pass /tend %tend /up /(hext:lib h) %noun (~(got by blobs) h)]
+    (turn new |=(h=hash (tend /up /(hext:lib h) (~(got by blobs) h))))
   :*  %pass  /relay/(scot %p who.key)/(scot %uv cid.key)
       %agent  [host.f %drive]  %poke
       %drive-action  !>(`action`[%relay who.key writer commit])
@@ -608,20 +851,23 @@
   =^  cards  state  (publish fid.commit tre wave)
   =^  caz  state  (finish key &+aeon.wave)
   [(weld cards caz) state]
-::  +publish: make [wave] the folder's head, with tree [tre]
+::  +publish: make [wave] the folder's head, with tree [tre]; what it
+::  replaces or deletes goes into history
 ::
 ++  publish
   |=  [=fid tre=(map fpath entry) =wave]
   ^-  (quip card _state)
   =/  fol  (~(got by folders) fid)
+  =/  prev  tree.fol
+  =/  os=(list op)  ops.wave
   =|  fresh=(set hash)
-  =.  fresh
-    =/  os=(list op)  ops.wave
-    |-  ^-  (set hash)
-    ?~  os  fresh
-    =/  new  new.i.os
-    ?~  new  $(os t.os)
-    $(os t.os, fresh (~(gas in fresh) chunks.u.new))
+  |-
+  ?^  os
+    =/  pre  (~(get by prev) path.i.os)
+    =?  old.fol  ?=(^ pre)
+      (~(add ja old.fol) path.i.os [aeon.wave when.wave author.wave u.pre])
+    ?~  new.i.os  $(os t.os)
+    $(os t.os, fresh (~(gas in fresh) chunks.u.new.i.os))
   =/  new-blobs=(list hash)
     (skip ~(tap in fresh) |=(h=hash (~(has in pub.fol) h)))
   =/  coo  (coop:lib fid epoch.fol)
@@ -634,12 +880,8 @@
     ==
   :_  state(folders (~(put by folders) fid fol))
   ;:  weld
-    %+  turn  new-blobs
-    |=  h=hash
-    ^-  card
-    [%pass /tend %tend coo /blob/(hext:lib h) %noun (~(got by blobs) h)]
-  ::
-    [%pass /tend %tend coo /wave/(dec:lib aeon.wave) %noun wave]~
+    (turn new-blobs |=(h=hash (tend coo /blob/(hext:lib h) (~(got by blobs) h))))
+    [(tend coo /wave/(dec:lib aeon.wave) wave)]~
     [(give fid [%head fid aeon.wave])]~
   ==
 ::
@@ -677,7 +919,7 @@
       =/  i  (skim folders.upd |=(i=info =(fid fid.i)))
       =^  cards  state
         ?~  i  `state
-        (host-head fid epoch.i.i head.i.i)
+        (host-head fid epoch.i.i head.i.i floor.i.i)
       =/  new=(list result)
         %+  skim  results.upd
         |=  r=result
@@ -685,8 +927,8 @@
       :_  state(done (~(gas by done) (turn new |=(r=result [[who cid]:r res.r]))))
       (weld cards (turn new |=(r=result (give fid [%result r]))))
     ::
-      %folder  (host-head fid epoch.upd head.upd)
-      %head    (host-head fid epoch.u.up.u.f aeon.upd)
+      %folder  (host-head fid epoch.upd head.upd floor.upd)
+      %head    (host-head fid epoch.u.up.u.f aeon.upd floor.u.up.u.f)
     ::  our devices' commits, settled by the host
     ::
         %result
@@ -697,17 +939,21 @@
       %gone  (drop fid)
     ==
   ==
-::  +host-head: the host's epoch and head for a mirror
+::  +host-head: the host's epoch, head and floor for a mirror. A new
+::  epoch tombs what we were reading: start over.
 ::
 ++  host-head
-  |=  [=fid epoch=@ud head=aeon]
+  |=  [=fid epoch=@ud head=aeon floor=aeon]
   ^-  (quip card _state)
   =/  f  (~(got by folders) fid)
   ?~  up.f  `state
-  =.  folders
-    (~(put by folders) fid f(up `u.up.f(epoch epoch, goal (max goal.u.up.f head))))
+  =/  m  u.up.f
+  =?  m  !=(epoch epoch.m)  m(busy |, wave ~, rock ~, need ~)
+  =.  m  m(epoch epoch, goal (max goal.m head), floor floor)
+  =.  folders  (~(put by folders) fid f(up `m))
   (pull fid)
-::  +pull: read the host's next wave
+::  +pull: read the host's next wave, or its rock if we're behind its
+::  floor
 ::
 ++  pull
   |=  =fid
@@ -716,52 +962,62 @@
   ?~  up.u.f  `state
   =/  m  u.up.u.f
   ?:  |(busy.m (gte head.u.f goal.m))  `state
-  =/  n  (dec:lib +(head.u.f))
-  :_  state(folders (~(put by folders) fid u.f(up `m(busy &, wave ~, need ~))))
+  =/  ep  (dec:lib epoch.m)
+  =/  [kind=@ta n=@ta]
+    ?:  (lth head.u.f floor.m)
+      [%rock (dec:lib floor.m)]
+    [%wave (dec:lib +(head.u.f))]
+  :_  state(folders (~(put by folders) fid u.f(up `m(busy &, wave ~, rock ~, need ~))))
   :_  ~
-  :*  %pass  /pull/[fid]/wave/[n]  %keen  &  host.u.f
-      ~[%g %x '1' %drive %$ '1' %f fid (dec:lib epoch.m) %wave n]
+  :*  %pass  /pull/[fid]/[ep]/[kind]/[n]  %keen  &  host.u.f
+      ~[%g %x '1' %drive %$ '1' %f fid ep kind n]
   ==
-::  +take-pull: a wave or chunk we read from a host
+::  +take-pull: a wave, rock or chunk we read from a host
 ::
 ++  take-pull
-  |=  [=fid kind=@ta arg=@ta gag=(unit page)]
+  |=  [=fid ep=@ta [kind=@ta arg=@ta] gag=(unit page)]
   ^-  (quip card _state)
   ?~  f=(~(get by folders) fid)  `state
   ?~  up.u.f  `state
   =/  m  u.up.u.f
-  ::  on any failure, read the wave again in a while
+  ?.  =(ep (dec:lib epoch.m))  `state                ::  from before a rekey
+  ::  on any failure, read it again in a while
   ::
   =/  retry
     :-  [%pass /retry/[fid] %arvo %b %wait (add now.bowl ~s5)]~
-    state(folders (~(put by folders) fid u.f(up `m(busy |, wave ~, need ~))))
+    state(folders (~(put by folders) fid u.f(up `m(busy |, wave ~, rock ~, need ~))))
+  =/  fetch
+    |=  need=(set hash)
+    ^-  (list card)
+    %+  turn  ~(tap in need)
+    |=  h=hash
+    ^-  card
+    =/  hx  (hext:lib h)
+    [%pass /pull/[fid]/[ep]/blob/[hx] %keen & host.u.f ~[%g %x '1' %drive %$ '1' %f fid ep %blob hx]]
   ?+    kind  `state
       %wave
     ?~  gag  retry
     ?~  w=((soft wave) q.u.gag)  retry
     ?.  =(aeon.u.w +(head.u.f))  retry
     =/  need=(set hash)
-      %-  silt
-      %+  skip
-        =|  out=(list hash)
-        =/  os=(list op)  ops.u.w
-        |-  ^-  (list hash)
-        ?~  os  out
-        $(os t.os, out ?~(new.i.os out (weld chunks.u.new.i.os out)))
-      |=(h=hash (~(has by blobs) h))
+      (silt (skip ~(tap in (entry-chunks (wave-entries ~[u.w]))) |=(h=hash (~(has by blobs) h))))
     ?:  =(~ need)
       (take-wave fid u.w)
-    :_  state(folders (~(put by folders) fid u.f(up `m(wave w, need need))))
-    %+  turn  ~(tap in need)
-    |=  h=hash
-    ^-  card
-    =/  hx  (hext:lib h)
-    :*  %pass  /pull/[fid]/blob/[hx]  %keen  &  host.u.f
-        ~[%g %x '1' %drive %$ '1' %f fid (dec:lib epoch.m) %blob hx]
-    ==
+    :-  (fetch need)
+    state(folders (~(put by folders) fid u.f(up `m(wave w, need need))))
+  ::
+      %rock
+    ?~  gag  retry
+    ?~  r=((soft (list (pair fpath entry))) q.u.gag)  retry
+    =/  rok  (malt u.r)
+    =/  need=(set hash)
+      (silt (skip ~(tap in (entry-chunks ~(val by rok))) |=(h=hash (~(has by blobs) h))))
+    ?:  =(~ need)
+      (take-rock fid rok)
+    :-  (fetch need)
+    state(folders (~(put by folders) fid u.f(up `m(rock `rok, need need))))
   ::
       %blob
-    ?~  wave.m  `state
     =/  h  (rash arg hex)
     ?.  (~(has in need.m) h)  `state
     ?~  c=(check-chunk h gag)  retry
@@ -769,7 +1025,9 @@
     =.  need.m  (~(del in need.m) h)
     ?.  =(~ need.m)
       `state(folders (~(put by folders) fid u.f(up `m)))
-    (take-wave fid u.wave.m)
+    ?^  wave.m  (take-wave fid u.wave.m)
+    ?^  rock.m  (take-rock fid u.rock.m)
+    `state
   ==
 ::  +take-wave: a host's wave, with all its chunks: publish it as ours
 ::
@@ -787,7 +1045,31 @@
   =^  cards  state  (publish fid tre wave)
   =/  f  (~(got by folders) fid)
   ?>  ?=(^ up.f)
-  =.  folders  (~(put by folders) fid f(up `u.up.f(busy |, wave ~, need ~)))
+  =.  folders  (~(put by folders) fid f(up `u.up.f(busy |, wave ~, rock ~, need ~)))
+  =^  caz  state  (pull fid)
+  [(weld cards caz) state]
+::  +take-rock: the host's tree at its floor, with all its chunks: we
+::  jump there, and our devices read it as our rock
+::
+++  take-rock
+  |=  [=fid rok=(map fpath entry)]
+  ^-  (quip card _state)
+  =/  f  (~(got by folders) fid)
+  ?>  ?=(^ up.f)
+  =/  m  u.up.f
+  =/  gone  (turn (tap:on-log log.f) head)
+  =/  [was-pub=(set hash) was-floor=aeon]  [pub.f floor.f]
+  =.  f
+    %=  f
+      head   floor.m
+      floor  floor.m
+      tree   rok
+      base   rok
+      log    ~
+      up     `m(busy |, wave ~, rock ~, need ~)
+    ==
+  =.  folders  (~(put by folders) fid f(pub (readable f)))
+  =^  cards  state  (rekey fid gone was-pub was-floor)
   =^  caz  state  (pull fid)
   [(weld cards caz) state]
 --

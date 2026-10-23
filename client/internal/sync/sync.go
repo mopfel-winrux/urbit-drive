@@ -55,6 +55,16 @@ type folder struct {
 	key           *shutKey
 	keyAsked      bool
 	waitingChunks int
+	floor         uint64   // waves up to here are gone: read the rock
+	exclude       []string // selective sync: paths we don't keep here
+	replay        *replay  // re-reading history for paths included again
+}
+
+// replay re-reads a folder's history up to Until, applying only ops on
+// paths under Only (just included again); persisted with the folder.
+type replay struct {
+	Until uint64
+	Only  []string
 }
 
 // pending is our commit in flight, persisted with the folder.
@@ -120,6 +130,8 @@ CREATE TABLE IF NOT EXISTS drive_folder(fid TEXT PRIMARY KEY, name TEXT, epoch I
 CREATE TABLE IF NOT EXISTS drive_file(fid TEXT, path TEXT, hash BLOB, size INT, mtime INT, PRIMARY KEY(fid, path));
 CREATE TABLE IF NOT EXISTS drive_staged(hash BLOB PRIMARY KEY, data BLOB, cid INT);
 CREATE TABLE IF NOT EXISTS drive_meta(k TEXT PRIMARY KEY, v INT);
+CREATE TABLE IF NOT EXISTS drive_exclude(fid TEXT, prefix TEXT, PRIMARY KEY(fid, prefix));
+CREATE TABLE IF NOT EXISTS drive_replay(fid TEXT PRIMARY KEY, body BLOB);
 `
 
 var bg = context.Background()
@@ -162,9 +174,8 @@ func (f *Follower) Start(n *mesa.Node) error {
 			f.folders[fo.fid] = fo
 		}
 		rows.Close()
-		for _, fo := range f.folders {
-			f.pump(fo) // scries don't survive a restart: ask again
-			f.scanSoon(fo)
+		if err := f.loadSelective(); err != nil {
+			return err
 		}
 		// a fresh watch: its first facts are every folder's head, now.
 		// The old flow's facts may be stuck in the planet's backoff for
@@ -283,9 +294,12 @@ func (f *Follower) takeFolder(uf *proto.Folder) {
 		f.cfg.Log("folder %q (%s)", uf.Name, uf.Fid)
 	}
 	if fo.epoch != uf.Epoch {
+		// a new epoch tombs the old one: what we're reading won't come
+		f.cancel(fo)
 		fo.key, fo.keyAsked = nil, false
 	}
 	fo.name, fo.epoch, fo.head, fo.live = uf.Name, uf.Epoch, uf.Head, true
+	fo.floor = uf.Floor
 	if ro := uf.Role == "r"; ro != fo.readOnly {
 		fo.readOnly = ro
 		if ro {
@@ -392,22 +406,72 @@ func (f *Follower) Scry(n *mesa.Node, her mesa.Ship, path, mark string, noun mes
 
 // pump reads the next wave a folder lacks.
 func (f *Follower) pump(fo *folder) {
-	if fo.pulling || fo.synced >= fo.head {
+	if fo.pulling || fo.synced >= fo.head || !fo.live {
 		return
 	}
 	f.withKey(fo, func(k *shutKey) {
 		fo.pulling = true
+		epoch := fo.epoch
+		retry := func(what string, err error) {
+			f.cfg.Log("%s of %q unreadable: %v", what, fo.name, err)
+			fo.pulling = false
+			f.n.After(5*time.Second, func() error { f.pump(fo); return nil })
+		}
+		if fo.synced < fo.floor {
+			floor := fo.floor
+			f.scry(k, proto.RockPath(fo.fid, epoch, floor), func(noun mesa.Noun, ok bool) {
+				rock, err := proto.ParseRock(noun)
+				if !ok || err != nil {
+					retry(fmt.Sprintf("rock %d", floor), err)
+					return
+				}
+				f.fetchChunks(fo, k, f.rockWave(fo, floor, rock))
+			})
+			return
+		}
 		aeon := fo.synced + 1
-		f.scry(k, proto.WavePath(fo.fid, fo.epoch, aeon), func(noun mesa.Noun, ok bool) {
+		f.scry(k, proto.WavePath(fo.fid, epoch, aeon), func(noun mesa.Noun, ok bool) {
 			w, err := proto.ParseWave(noun)
 			if !ok || err != nil || w.Aeon != aeon {
-				f.cfg.Log("wave %d of %q unreadable: %v", aeon, fo.name, err)
-				fo.pulling = false
+				retry(fmt.Sprintf("wave %d", aeon), err)
 				return
 			}
 			f.fetchChunks(fo, k, w)
 		})
 	})
+}
+
+// rockWave is a rock as a wave from the planet: every file in it, and
+// a delete for every file we have that it doesn't.
+func (f *Follower) rockWave(fo *folder, floor uint64, rock map[string]*proto.Entry) *proto.Wave {
+	w := &proto.Wave{Aeon: floor, Author: f.cfg.Planet}
+	for p, e := range rock {
+		w.Ops = append(w.Ops, proto.Op{Path: p, New: e})
+	}
+	q, err := f.db.QueryContext(bg, `SELECT path FROM drive_file WHERE fid = ?`, fo.fid)
+	if err == nil {
+		for q.Next() {
+			var p string
+			q.Scan(&p)
+			if _, ok := rock[p]; !ok {
+				w.Ops = append(w.Ops, proto.Op{Path: p})
+			}
+		}
+		q.Close()
+	}
+	return w
+}
+
+// cancel drops the folder's reads in flight.
+func (f *Follower) cancel(fo *folder) {
+	pre := proto.FolderPrefix(fo.fid, fo.epoch)
+	for p := range f.scries {
+		if strings.HasPrefix(p, pre) {
+			delete(f.scries, p)
+			f.n.Unscry(f.cfg.Planet, p)
+		}
+	}
+	fo.pulling, fo.waitingChunks = false, 0
 }
 
 // cacheDir holds downloaded chunks until their wave is applied.
@@ -435,7 +499,7 @@ func (f *Follower) readChunk(h chunk.Hash) ([]byte, error) {
 func (f *Follower) fetchChunks(fo *folder, k *shutKey, w *proto.Wave) {
 	need := map[chunk.Hash]bool{}
 	for _, op := range w.Ops {
-		if op.New == nil || f.matchesDisk(fo, op.Path, op.New.Hash) {
+		if op.New == nil || !f.wanted(fo, op.Path) || f.matchesDisk(fo, op.Path, op.New.Hash) {
 			continue
 		}
 		for _, h := range op.New.Chunks {

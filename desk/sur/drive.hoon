@@ -34,6 +34,10 @@
 +$  cop    [path=fpath base=(unit hash) new=(unit entry)]
 +$  commit  [cid=@uv =fid base=aeon ops=(list cop)]
 ::
+::  $folder: the log holds waves floor+1..head; [base] is the tree at
+::  [floor], published as a rock once floor > 0. Older waves are folded
+::  into base when they leave the retention window.
+::
 +$  folder
   $:  name=@t                          ::  ours to choose, for mirrors too
       host=ship
@@ -45,14 +49,22 @@
       members=(map ship role)          ::  who we share it with (as host)
       =role                            ::  ours (%rw if we host it)
       up=(unit mirror)                 ::  set when someone else hosts it
+      floor=aeon
+      base=(map fpath entry)
+      old=(jar fpath version)          ::  replaced and deleted, newest first
   ==
+::  $version: a file as it was until [aeon] replaced or deleted it
+::
++$  version  [=aeon when=@da who=ship =entry]
 ::  $mirror: how far we've followed a host
 ::
 +$  mirror
   $:  epoch=@ud                        ::  the host's coop epoch
       goal=aeon                        ::  the host's head
-      busy=?                           ::  reading a wave
+      floor=aeon                       ::  the host's floor
+      busy=?                           ::  reading a wave or rock
       wave=(unit wave)                 ::  read, waiting on chunks
+      rock=(unit (map fpath entry))    ::  read, waiting on chunks
       need=(set hash)
   ==
 +$  invite  [name=@t =role]
@@ -68,6 +80,7 @@
 ::
 ::    from our ship (the client over eyre, or the web UI):
 ::      %pair %unpair %new-folder %share %unshare %accept %decline %leave
+::      %restore %keep %prune
 ::    from our devices:  %commit
 ::    from a host:       %invite %uninvite
 ::    from a guest:      %relay (a guest's device's commit)
@@ -85,6 +98,9 @@
       [%decline host=ship =fid]
       [%leave =fid]
       [%relay author=ship by=@t =commit]
+      [%restore =fid path=fpath =hash]  ::  a version of a file, as current
+      [%keep keep=@dr]                  ::  how long history lasts
+      [%prune ~]                        ::  prune now
   ==
 ::  $update: facts on /v1/folders (our devices) and /v1/share/<fid>
 ::  (a folder's guests)
@@ -94,7 +110,7 @@
 ::    more than five facts unacked, so a fact per folder and per result
 ::    would clog a new subscription.
 ::
-+$  info    [=fid name=@t host=ship epoch=@ud head=aeon =role]
++$  info    [=fid name=@t host=ship epoch=@ud head=aeon =role floor=aeon]
 +$  result  [who=ship cid=@uv res=(each aeon @t)]
 +$  update
   $%  [%hello folders=(list info) results=(list result)]

@@ -1,1 +1,1 @@
-{"name":"drive","short_name":"drive","start_url":"/drive/","scope":"/drive/","id":"/drive/","display":"standalone","background_color":"#0b0e14","theme_color":"#0b0e14","icons":[{"src":"/drive/tile.svg","sizes":"any","type":"image/svg+xml"}]}
+{"name":"Drive","short_name":"Drive","start_url":"/drive/","scope":"/drive/","id":"/drive/","display":"standalone","background_color":"#0b0e14","theme_color":"#2a62e0","icons":[{"src":"/drive/tile.svg","sizes":"any","type":"image/svg+xml"}]}

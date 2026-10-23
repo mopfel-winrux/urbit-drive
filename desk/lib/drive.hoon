@@ -59,6 +59,8 @@
         host+s+(scot %p host.f)
         head+(numb head.f)
         epoch+(numb epoch.f)
+        floor+(numb floor.f)
+        trash+(numb (lent (skip ~(tap in ~(key by old.f)) |=(p=@t (~(has by tree.f) p)))))
         role+s+role.f
         files+(numb ~(wyt by tree.f))
         bytes+(numb (roll ~(val by tree.f) |=([e=entry:drive n=@ud] (add n size.e))))
@@ -72,6 +74,33 @@
         :-  %behind
         ?~  up.f  (numb 0)
         (numb (sub (max goal.u.up.f head.f) head.f))
+    ==
+  ::
+  ::  +old: per path, its versions in history, newest first; a path not
+  ::  in the tree is in the trash
+  ::
+  ++  old
+    |=  [t=(map fpath:drive entry:drive) o=(jar fpath:drive version:drive)]
+    ^-  json
+    :-  %a
+    %+  turn  (sort ~(tap by o) |=([a=[p=@t *] b=[p=@t *]] (aor p.a p.b)))
+    |=  [p=fpath:drive vs=(list version:drive)]
+    %-  pairs
+    :~  path+s+p
+        deleted+b+!(~(has by t) p)
+      ::
+        :-  %versions
+        :-  %a
+        %+  turn  vs
+        |=  v=version:drive
+        %-  pairs
+        :~  aeon+(numb aeon.v)
+            when+(time when.v)
+            who+s+(scot %p who.v)
+            hash+s+(hext hash.entry.v)
+            size+(numb size.entry.v)
+            mtime+(time mtime.entry.v)
+        ==
     ==
   ::
   ++  invite
@@ -145,6 +174,12 @@
       %unpair      [%unpair (slav %p (so val))]
       %new-folder  [%new-folder (so val)]
       %leave       [%leave (so val)]
+      %keep        [%keep (mul ~d1 (ni val))]
+      %prune       [%prune ~]
+    ::
+        %restore
+      =/  [=fid:drive p=@t h=@t]  ((ot fid+so path+so hash+so ~) val)
+      [%restore fid p (rash h hex)]
     ::
         %share
       =/  [=fid:drive who=@t r=@t]  ((ot fid+so ship+so role+so ~) val)

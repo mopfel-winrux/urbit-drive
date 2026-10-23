@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Start Drive at login. The tray's "Start at login" writes this same file
+     to ~/Library/LaunchAgents (internal/ui/autostart_darwin.go); it's here
+     for installing by hand or by MDM. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>io.github.mopfel-winrux.drive</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Applications/Drive.app/Contents/MacOS/drive</string>
+    <string>tray</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>ProcessType</key><string>Interactive</string>
+</dict>
+</plist>

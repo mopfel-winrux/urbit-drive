@@ -45,6 +45,7 @@ func trayReady(a *App) {
 	openDir := systray.AddMenuItem("Open Drive folder", "Show the synced folder")
 	openPlanet := systray.AddMenuItem("Open on planet", "%drive's page on your planet")
 	settings := systray.AddMenuItem("Settings…", "Pairing, status and reset")
+	login := systray.AddMenuItemCheckbox("Start at login", "Start Drive when you log in", Autostart())
 	systray.AddSeparator()
 	quit := systray.AddMenuItem("Quit", "Stop syncing and quit")
 
@@ -115,6 +116,15 @@ func trayReady(a *App) {
 				}
 			case <-settings.ClickedCh:
 				open(a.URL())
+			case <-login.ClickedCh:
+				if err := SetAutostart(a.Home, !login.Checked()); err != nil {
+					log.Printf("start at login: %v", err)
+				}
+				if Autostart() {
+					login.Check()
+				} else {
+					login.Uncheck()
+				}
 			case <-quit.ClickedCh:
 				systray.Quit()
 				return
