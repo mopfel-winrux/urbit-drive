@@ -276,7 +276,7 @@ func (a *App) doPair(w http.ResponseWriter, r *http.Request) {
 		a.pairing = false
 		a.mu.Unlock()
 	}()
-	dir := strings.TrimSpace(r.FormValue("dir"))
+	dir := Untilde(strings.TrimSpace(r.FormValue("dir")))
 	if dir == "" {
 		dir = DefaultDir()
 	}
@@ -307,7 +307,7 @@ func (a *App) page(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	st := a.Status()
 	pageT.Execute(w, map[string]any{
-		"S": st, "Host": host, "Dir": DefaultDir(), "Summary": Summary(st),
+		"S": st, "Host": host, "Dir": Tilde(DefaultDir()), "Summary": Summary(st),
 	})
 }
 
@@ -397,7 +397,7 @@ func FolderLine(f dsync.FolderStatus) string {
 }
 
 var pageT = template.Must(template.New("page").Funcs(template.FuncMap{
-	"line": FolderLine, "file": FileState, "base": path.Base,
+	"line": FolderLine, "file": FileState, "tilde": Tilde, "base": path.Base,
 	"glyph": glyphName,
 }).Parse(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -487,7 +487,7 @@ code{font-size:13px;background:var(--soft);padding:1px 6px;border-radius:4px}
 
 <h2>Folders</h2>
 <ul class="rows" id="folders">{{range .S.Folders}}<li><svg class="ic"><use href="#folder"/></svg><span class="name">{{.Name}}</span><span class="state">{{line .}}</span></li>{{end}}</ul>
-{{with .S.Config}}<p class="id">Synced to <code>{{.Dir}}</code></p>{{end}}
+{{with .S.Config}}<p class="id">Synced to <code>{{tilde .Dir}}</code></p>{{end}}
 
 {{if .S.Running}}
 <h2>Selective sync</h2>

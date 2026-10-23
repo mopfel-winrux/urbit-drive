@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	mesa "github.com/mopfel-winrux/libmesa/bindings/go"
 	_ "modernc.org/sqlite"
@@ -39,6 +40,39 @@ func DefaultHome() string {
 }
 
 // DefaultDir is the folder we sync unless told otherwise.
+// Tilde shows a path under the home folder as ~/…, as people write it.
+func Tilde(p string) string {
+	h, err := os.UserHomeDir()
+	if err != nil || h == "" {
+		return p
+	}
+	if p == h {
+		return "~"
+	}
+	if rel, ok := strings.CutPrefix(p, h+string(filepath.Separator)); ok {
+		return "~" + string(filepath.Separator) + rel
+	}
+	return p
+}
+
+// Untilde expands a leading ~ to the home folder.
+func Untilde(p string) string {
+	h, err := os.UserHomeDir()
+	if err != nil || h == "" {
+		return p
+	}
+	if p == "~" {
+		return h
+	}
+	if rel, ok := strings.CutPrefix(p, "~/"); ok {
+		return filepath.Join(h, rel)
+	}
+	if rel, ok := strings.CutPrefix(p, `~\`); ok {
+		return filepath.Join(h, rel)
+	}
+	return p
+}
+
 func DefaultDir() string {
 	h, _ := os.UserHomeDir()
 	return filepath.Join(h, "Drive")
