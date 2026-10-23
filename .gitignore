@@ -1,0 +1,8 @@
+zod/
+bus/
+.ship-cookie
+urbit-mcp/
+client/bin/
+*.db
+*.db.lock
+*.key
