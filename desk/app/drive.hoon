@@ -204,16 +204,9 @@
   ::
       [%x %file fid=@ hx=@ ~]
     ?~  f=(~(get by folders) fid.pole)  [~ ~]
-    =/  h  (rash hx.pole hex)
-    =/  vs=(list version)  (zing ~(val by old.u.f))
-    =/  es=(list entry)
-      (weld ~(val by tree.u.f) (turn vs |=(v=version entry.v)))
-    ?~  hit=(skim es |=(e=entry =(h hash.e)))  [~ ~]
-    ?.  (levy chunks.i.hit |=(c=hash (~(has by blobs) c)))  [~ ~]
-    =/  dat
-      %+  can  3
-      (turn chunks.i.hit |=(c=hash =+((~(got by blobs) c) [len dat])))
-    ``mime+!>(`mime`[/application/octet-stream size.i.hit dat])
+    ?~  e=(find-entry:hc u.f (rash hx.pole hex))  [~ ~]
+    ?~  dat=(file-bytes:hc u.e 0 size.u.e)  [~ ~]
+    ``mime+!>(`mime`[/application/octet-stream u.dat])
   ::
       [%x %pair moon=@ ~]
     =/  moon  (slav %p moon.pole)
@@ -615,7 +608,18 @@
   =/  pax=(unit path)  (rush base stap)
   ?:  ?=([~ %drive-api %s @ *] pax)
     (share-http eid req i.t.t.u.pax t.t.t.u.pax qs)
+  ::  the file viewer, public: share pages load it too
+  ::
+  ?:  =('/drive-api/preview.js' base)
+    =/  js  .^(@t %cx /(scot %p our.bowl)/[q.byk.bowl]/(scot %da now.bowl)/web/preview/js)
+    :_  state
+    :~  [%give %fact ~[/http-response/[eid]] %http-response-header !>(`response-header:http`[200 ~[['content-type' 'text/javascript; charset=utf-8'] ['cache-control' 'no-cache']]])]
+        [%give %fact ~[/http-response/[eid]] %http-response-data !>(`(unit octs)``(as-octs:mimes:html js))]
+        [%give %kick ~[/http-response/[eid]] ~]
+    ==
   ?.  authenticated.req  [(reply 403 '{"error":"log in first"}') state]
+  ?:  ?=([~ %drive-api %file @ @ ~] pax)
+    (file-http eid req i.t.t.u.pax i.t.t.t.u.pax qs)
   ?.  &(=(%'POST' method.request.req) =('/drive-api/blob' base))
     [(reply 404 '{"error":"not found"}') state]
   ?~  body.request.req  [(reply 400 '{"error":"empty body"}') state]
@@ -757,24 +761,115 @@
   ::
       [%file ~]
     ?.  open  [(err 403 'This link needs its password.') state]
-    =/  want=@t  (fall (bind (find-q qs 'path') same) '')
+    =/  want=@t  (fall (find-q qs 'path') '')
     =/  hit  (skim es.u.sc |=([rel=@t e=entry] =(rel want)))
     ?~  hit  [(err 404 'That file isn’t part of this link.') state]
-    =*  e  e.i.hit
-    ?.  (levy chunks.e |=(c=hash (~(has by blobs) c)))
-      [(err 503 'This file isn’t fully on the ship yet.') state]
-    =/  dat  (can 3 (turn chunks.e |=(c=hash =+((~(got by blobs) c) [len dat]))))
     =/  fname  (rear (rash rel.i.hit (more fas (cook crip (star ;~(less fas next))))))
-    =/  img=(unit @t)  (image-type fname)
-    =/  inline=?  &(?=(^ img) =(`'1' (find-q qs 'inline')))
-    =/  hed=(list [key=@t value=@t])
-      :~  ['content-type' ?:(inline (need img) 'application/octet-stream')]
-          ['content-disposition' (crip "{?:(inline "inline" "attachment")}; filename*=UTF-8''{(en-urlt:html (trip fname))}")]
-      ==
-    :-  (respond 200 hed `[size.e dat])
-    ?:  inline  state
+    =/  inline=?  =(`'1' (find-q qs 'inline'))
+    =/  [code=@ud hed=(list [key=@t value=@t]) body=(unit octs)]
+      (file-response req e.i.hit fname inline)
+    :-  (respond code hed body)
+    ::  a download counts once; previews and ranges of it don't
+    ::
+    ?:  |(inline !=(200 code))  state
     state(links (~(put by links) tok l(downloads +(downloads.l))))
   ==
+::  +file-http: GET /drive-api/file/<fid>/<hash>?name=<name>[&inline=1],
+::  a file or a version of it, for the owner's viewer and downloads.
+::  Its hash names its contents, so it caches for good.
+::
+++  file-http
+  |=  [eid=@ta req=inbound-request:eyre fid=@ta hx=@ta qs=(list [p=@t q=@t])]
+  ^-  (quip card _state)
+  =/  pax  /http-response/[eid]
+  =/  send
+    |=  [code=@ud hed=(list [key=@t value=@t]) body=(unit octs)]
+    ^-  (list card)
+    =?  hed  |(=(200 code) =(206 code))
+      [['cache-control' 'private, max-age=31536000, immutable'] hed]
+    :~  [%give %fact ~[pax] %http-response-header !>(`response-header:http`[code [['x-content-type-options' 'nosniff'] hed]])]
+        [%give %fact ~[pax] %http-response-data !>(body)]
+        [%give %kick ~[pax] ~]
+    ==
+  ?~  h=(rush hx hex)  [(send 404 ~ ~) state]
+  ?~  f=(~(get by folders) fid)  [(send 404 ~ ~) state]
+  ?~  e=(find-entry u.f u.h)  [(send 404 ~ ~) state]
+  =/  name=@t  (fall (find-q qs 'name') 'file')
+  =/  [code=@ud hed=(list [key=@t value=@t]) body=(unit octs)]
+    (file-response req u.e name =(`'1' (find-q qs 'inline')))
+  [(send code hed body) state]
+::  +find-entry: a file in [f] by its hash: current, or a version in history
+::
+++  find-entry
+  |=  [f=folder h=hash]
+  ^-  (unit entry)
+  =/  vs=(list version)  (zing ~(val by old.f))
+  =/  es=(list entry)  (weld ~(val by tree.f) (turn vs |=(v=version entry.v)))
+  =/  hit  (skim es |=(e=entry =(h hash.e)))
+  ?~(hit ~ `i.hit)
+::  +file-response: [e], called [name], whole or the range asked for.
+::  Inline, it's typed by its name so the browser can show it; nothing in
+::  it can run (html goes as text, and the sandbox stops svg's scripts).
+::  Otherwise it's a download.
+::
+++  file-response
+  |=  [req=inbound-request:eyre e=entry name=@t inline=?]
+  ^-  [@ud (list [key=@t value=@t]) (unit octs)]
+  =/  rng  (get-range req size.e)
+  ?:  ?=([~ ~] rng)
+    [416 ~[['content-range' (crip "bytes */{(a-co:co size.e)}")]] ~]
+  =/  [a=@ud b=@ud]  ?~(rng [0 size.e] (need u.rng))
+  ?~  dat=(file-bytes e a b)
+    [503 ~[['content-type' 'text/plain; charset=utf-8']] `(as-octs:mimes:html 'This file isn’t fully on the ship yet.')]
+  =/  typ=@t  ?:(inline (file-type name) 'application/octet-stream')
+  =/  hed=(list [key=@t value=@t])
+    :~  ['content-type' typ]
+        ['content-disposition' (crip "{?:(inline "inline" "attachment")}; filename*=UTF-8''{(en-urlt:html (trip name))}")]
+        ['accept-ranges' 'bytes']
+    ==
+  ::  (a sandboxed pdf won't open in Chrome's viewer)
+  =?  hed  !=('application/pdf' typ)  [['content-security-policy' 'sandbox'] hed]
+  ?~  rng  [200 hed dat]
+  [206 [['content-range' (crip "bytes {(a-co:co a)}-{(a-co:co (sub b 1))}/{(a-co:co size.e)}")] hed] dat]
+::  +get-range: the bytes a request's Range header asks for, as [a b)
+::  and at most 4 MiB of them: ~ for the whole file (no header, or one we
+::  don't read), [~ ~] when it's past the end
+::
+++  get-range
+  |=  [req=inbound-request:eyre size=@ud]
+  ^-  (unit (unit [@ud @ud]))
+  ?:  =(0 size)  ~
+  =/  hs  (skim header-list.request.req |=([k=@t v=@t] =('range' (crip (cass (trip k))))))
+  ?~  hs  ~
+  =/  r  (rush value.i.hs ;~(pfix (jest 'bytes=') ;~(plug (punt dem) ;~(pfix hep (punt dem)))))
+  ?~  r  ~
+  =/  [lo=(unit @ud) hi=(unit @ud)]  u.r
+  =/  ab=(unit [a=@ud b=@ud])
+    ?~  lo
+      ?~  hi  ~
+      `[(sub size (min size u.hi)) size]
+    `[u.lo ?~(hi size (min size +(u.hi)))]
+  ?~  ab  ~
+  ?:  (gte a.u.ab b.u.ab)  [~ ~]
+  ``[a.u.ab (min b.u.ab (add a.u.ab max-chunk))]
+::  +file-bytes: bytes [a b) of [e], cut from just the chunks they're in;
+::  ~ if one of those isn't here
+::
+++  file-bytes
+  |=  [e=entry a=@ud b=@ud]
+  ^-  (unit octs)
+  =|  out=(list [@ud @])
+  =/  o=@ud  0
+  =/  cs=(list hash)  chunks.e
+  |-  ^-  (unit octs)
+  ?~  cs  `[(sub b a) (can 3 (flop out))]
+  ?:  (gte o b)  `[(sub b a) (can 3 (flop out))]
+  ?~  c=(~(get by blobs) i.cs)  ~
+  =/  top=@ud  (add o len.u.c)
+  ?:  (lte top a)  $(cs t.cs, o top)
+  =/  s=@ud  (max a o)
+  =/  n=@ud  (sub (min b top) s)
+  $(cs t.cs, o top, out [[n (cut 3 [(sub s o) n] dat.u.c)] out])
 ::
 ++  find-q
   |=  [qs=(list [p=@t q=@t]) k=@t]
@@ -802,16 +897,28 @@
   ?:  =(pre (scag (lent pre) kv))  `(crip (slag (lent pre) kv))
   $(parts t.parts)
 ::
-++  image-type
+::  +file-type: a file's media type, by its name, for showing it inline;
+::  anything we don't know is shown as text
+::
+++  file-type
   |=  name=@t
-  ^-  (unit @t)
+  ^-  @t
   =/  t  (cass (trip name))
-  =/  ext  ?~(d=(find "." (flop t)) "" (slag (sub (lent t) u.d) t))
-  ?:  |(=(ext "png"))  `'image/png'
-  ?:  |(=(ext "jpg") =(ext "jpeg"))  `'image/jpeg'
-  ?:  =(ext "gif")  `'image/gif'
-  ?:  =(ext "webp")  `'image/webp'
-  ~
+  =/  ext=tape  ?~(d=(find "." (flop t)) "" (slag (sub (lent t) u.d) t))
+  =/  types=(map tape @t)
+    %-  malt
+    ^-  (list [tape @t])
+    :~  ["png" 'image/png']  ["jpg" 'image/jpeg']  ["jpeg" 'image/jpeg']
+        ["gif" 'image/gif']  ["webp" 'image/webp']  ["avif" 'image/avif']
+        ["bmp" 'image/bmp']  ["ico" 'image/x-icon']  ["svg" 'image/svg+xml']
+        ["pdf" 'application/pdf']
+        ["mp3" 'audio/mpeg']  ["m4a" 'audio/mp4']  ["aac" 'audio/aac']
+        ["wav" 'audio/wav']  ["ogg" 'audio/ogg']  ["oga" 'audio/ogg']
+        ["opus" 'audio/ogg']  ["flac" 'audio/flac']
+        ["mp4" 'video/mp4']  ["m4v" 'video/mp4']  ["webm" 'video/webm']
+        ["mov" 'video/quicktime']  ["ogv" 'video/ogg']
+    ==
+  (fall (~(get by types) ext) 'text/plain; charset=utf-8')
 ::
 ++  new-folder
   |=  name=@t

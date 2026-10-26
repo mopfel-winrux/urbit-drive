@@ -1,7 +1,7 @@
 /* service worker: installable + offline shell. Bump VERSION to invalidate caches.
  * Only runs over HTTPS or localhost. Registered from app.js with scope /drive/. */
-const VERSION = 'drive-v6';
-const SHELL = ['/drive/', '/drive/index.html', '/drive/app.js', '/drive/ship.js', '/drive/style.css', '/drive/manifest.json', '/drive/tile.svg'];
+const VERSION = 'drive-v7';
+const SHELL = ['/drive/', '/drive/index.html', '/drive/app.js', '/drive/ship.js', '/drive/preview.js', '/drive/style.css', '/drive/manifest.json', '/drive/tile.svg'];
 self.addEventListener('install', (e) => e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', (e) => {

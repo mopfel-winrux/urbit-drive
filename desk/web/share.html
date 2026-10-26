@@ -49,6 +49,7 @@ tbody tr:hover { background:var(--rail); }
 .name { display:flex; align-items:center; gap:12px; min-width:0; }
 .name .ic { width:24px; height:24px; color:var(--fg2); stroke-width:1.5; }
 .name .ic.folder { color:var(--blue); fill:var(--blue-soft); }
+.name .ic.ft { color:var(--ft); }
 .name a, .name span { color:var(--fg); text-decoration:none; overflow:hidden; text-overflow:ellipsis; font-weight:500; }
 .name a:hover { text-decoration:underline; }
 .icon-btn { display:inline-grid; place-items:center; width:32px; height:32px; border-radius:6px; color:var(--fg2); }
@@ -75,6 +76,7 @@ footer { text-align:center; color:var(--fg2); font-size:13px; padding:24px; }
 </header>
 <main id="main"><div class="skel"></div></main>
 <footer id="foot" hidden></footer>
+<script src="/drive-api/preview.js"></script>
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
@@ -82,7 +84,9 @@ footer { text-align:center; color:var(--fg2); font-size:13px; padding:24px; }
   const icon = (id, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
   const base = location.pathname.replace(/\/+$/, '');
   const fileUrl = (rel, inline) => `${base}/file?path=${encodeURIComponent(rel)}${inline ? '&inline=1' : ''}`;
-  const isImage = (n) => /\.(png|jpe?g|gif|webp)$/i.test(n);
+  const P = window.DrivePreview;
+  const typeIcon = (n) => (P ? P.icon(n) : icon('file'));
+  const item = (f, name) => ({ name, size: f.size, mtime: f.mtime, url: fileUrl(f.path, true), download: fileUrl(f.path) });
   function size(n) { if (n < 1024) return `${n} B`; const u = ['KB', 'MB', 'GB', 'TB']; let i = -1; do { n /= 1024; i++; } while (n >= 1024 && i < 3); return `${n < 10 ? n.toFixed(1) : Math.round(n)} ${u[i]}`; }
   const when = (ms) => new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
   let info, dir = '';
@@ -110,12 +114,16 @@ footer { text-align:center; color:var(--fg2); font-size:13px; padding:24px; }
     });
   }
 
+  // a file: the viewer, with nowhere to close it to
   function file() {
     const f = info.files[0];
-    const dl = `<a class="btn primary" href="${fileUrl(f.path)}" download>${icon('download')}Download</a>`;
     frame();
-    $('#main').innerHTML = `<div class="card">${isImage(f.path) ? `<img class="preview" src="${fileUrl(f.path, true)}" alt="${esc(info.name)}">` : icon('file', 'big')}
-      <h1>${esc(info.name)}</h1><p>${size(f.size)} · modified ${when(f.mtime)}</p>${dl}</div>`;
+    if (P) {
+      $('#main').innerHTML = '';
+      return P.open({ items: [item(f, info.name)], closable: false, sub: `Shared by ${info.owner}`, brand: document.querySelector('header .logo').outerHTML });
+    }
+    $('#main').innerHTML = `<div class="card">${icon('file', 'big')}<h1>${esc(info.name)}</h1><p>${size(f.size)} · modified ${when(f.mtime)}</p>
+      <a class="btn primary" href="${fileUrl(f.path)}" download>${icon('download')}Download</a></div>`;
   }
 
   // a folder: browse into subfolders, download files one by one or all as a zip
@@ -140,10 +148,26 @@ footer { text-align:center; color:var(--fg2); font-size:13px; padding:24px; }
     let crumbs = `<a href="#" data-dir="">${esc(info.name)}</a>`;
     segs.forEach((s, i) => { crumbs += `${icon('chevron')}<a href="#" data-dir="${esc(segs.slice(0, i + 1).join('/'))}">${esc(s)}</a>`; });
     const rows = [...[...dirs.values()].sort((a, b) => a.name.localeCompare(b.name)).map((d) => `<tr><td><div class="name">${icon('folder', 'folder')}<a href="#" data-dir="${esc(pre + d.name)}">${esc(d.name)}</a></div></td><td class="c-mod">—</td><td class="c-size">${d.n} ${d.n === 1 ? 'file' : 'files'}</td><td class="c-act"></td></tr>`),
-      ...here.sort((a, b) => a.path.localeCompare(b.path)).map((f) => { const n = f.path.slice(pre.length); return `<tr><td><div class="name">${icon('file')}<a href="${fileUrl(f.path)}" download>${esc(n)}</a></div></td><td class="c-mod">${when(f.mtime)}</td><td class="c-size">${size(f.size)}</td><td class="c-act"><a class="icon-btn" href="${fileUrl(f.path)}" download aria-label="Download ${esc(n)}">${icon('download')}</a></td></tr>`; })];
+      ...here.sort((a, b) => a.path.localeCompare(b.path)).map((f) => { const n = f.path.slice(pre.length); return `<tr><td><div class="name">${typeIcon(n)}<a href="${fileUrl(f.path)}" download data-view="${esc(f.path)}">${esc(n)}</a></div></td><td class="c-mod">${when(f.mtime)}</td><td class="c-size">${size(f.size)}</td><td class="c-act"><a class="icon-btn" href="${fileUrl(f.path)}" download aria-label="Download ${esc(n)}">${icon('download')}</a></td></tr>`; })];
     $('#main').innerHTML = `${segs.length ? `<div class="crumbs">${crumbs}</div>` : ''}<div class="title-row"><h1>${esc(segs.length ? segs[segs.length - 1] : info.name)}</h1>${segs.length ? '' : zip}</div>${segs.length ? '' : `<p class="sub">${summary}</p>`}
       ${rows.length ? `<table><thead><tr><th>Name</th><th class="c-mod">Modified</th><th class="c-size">Size</th><th class="c-act"></th></tr></thead><tbody>${rows.join('')}</tbody></table>`
         : `<div class="card">${icon('folder', 'big')}<h1>Empty folder</h1><p>Nothing has been added here yet.</p></div>`}`;
+  }
+
+  // the viewer, stepping through the files beside [path]; the address
+  // (#view=<path>) points at what's open, so it can be passed on
+  function view(path) {
+    const at = path.lastIndexOf('/'), pre = at < 0 ? '' : path.slice(0, at + 1);
+    const here = info.files.filter((f) => f.path.startsWith(pre) && f.path !== pre && !f.path.slice(pre.length).includes('/')).sort((a, b) => a.path.localeCompare(b.path));
+    const index = here.findIndex((f) => f.path === path);
+    if (index < 0) return;
+    if (dir !== pre.replace(/\/$/, '')) { dir = pre.replace(/\/$/, ''); folder(); }
+    const mark = (i) => history.replaceState(null, '', '#view=' + encodeURIComponent(here[i].path));
+    mark(index);
+    const o = { items: here.map((f) => item(f, f.path.slice(pre.length))), sub: `Shared by ${info.owner}`,
+      onNav: (i) => { mark(i); P.open({ ...o, index: i }); },
+      onClose: () => history.replaceState(null, '', location.pathname) };
+    P.open({ ...o, index });
   }
 
   // "Download all": a zip, stored (no compression), built in the browser
@@ -177,6 +201,8 @@ footer { text-align:center; color:var(--fg2); font-size:13px; padding:24px; }
   }
 
   document.addEventListener('click', (ev) => {
+    const v = ev.target.closest('[data-view]');
+    if (v && P) { ev.preventDefault(); view(v.dataset.view); return; }
     const d = ev.target.closest('[data-dir]');
     if (d) { ev.preventDefault(); dir = d.dataset.dir; folder(); window.scrollTo(0, 0); return; }
     const z = ev.target.closest('#zip');
@@ -190,7 +216,10 @@ footer { text-align:center; color:var(--fg2); font-size:13px; padding:24px; }
       if (!r.ok) return gone(info.error || 'This link doesn’t exist or has expired.');
     } catch { return gone('The ship sharing this didn’t answer. Try again in a moment.'); }
     if (info.locked) return locked();
-    info.kind === 'file' ? file() : folder();
+    if (info.kind === 'file') return file();
+    folder();
+    const want = location.hash.startsWith('#view=') && decodeURIComponent(location.hash.slice(6));
+    if (want && P) view(want);
   }
   load();
 })();

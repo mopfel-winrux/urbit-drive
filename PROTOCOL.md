@@ -313,8 +313,8 @@ it's plain HTTPS from the ship.
   - the page itself (`web/share.html`, read from the desk);
   - `/info`: what the link is, and its file list;
   - `/unlock`: a POST with the password;
-  - `/file?path=<rel>`: one file, as an attachment, or inline for images
-    with `inline=1`.
+  - `/file?path=<rel>`: one file, as an attachment, or inline (for the
+    viewer) with `inline=1`. Ranges work as in "Serving files" below.
 - **Links are live.** Each request resolves the link's path in the current
   tree, so a link always shows the latest version. When the path is gone,
   the link answers 410.
@@ -326,7 +326,8 @@ it's plain HTTPS from the ship.
   `Referrer-Policy: no-referrer`, so the token doesn't leak to other sites.
 - **Who can make links:** only the folder's host. A guest can't publish an
   owner's folder to the world.
-- **Counts.** Each link counts views (`/info` reads) and downloads.
+- **Counts.** Each link counts views (`/info` reads) and downloads: whole
+  attachment downloads only, not previews or ranges.
 - **Turning a link off** deletes it; its token then answers 404.
 - **From a computer.** A device asks its planet with a
   `[%link-ask token fid path]` poke, offering a fresh token. The planet
@@ -340,6 +341,30 @@ it's plain HTTPS from the ship.
   files, the settings page and `drive link <path>` all use this. The CLI
   finds the running app through `ui.json` in its state directory, which
   holds the page's address and token, owner-only.
+
+## Serving files and previews
+
+The web app and share pages show files in a viewer: images, PDFs, video and
+audio, text and code, Markdown (rendered), and CSV (as a table). Both load
+the same `web/preview.js`; share pages get it from
+`/drive-api/preview.js`, which needs no login.
+
+- **The owner's route** is `/drive-api/file/<fid>/<hash>?name=<name>`,
+  logged in only. It serves the current file or any version still in
+  history, because the hash names its contents. That also lets it be
+  cached for good (`immutable`).
+- **Ranges.** Both file routes answer `Range: bytes=a-b` (and `a-` and
+  `-n`) with a 206, so video and audio can seek without fetching the whole
+  file. A range is cut from just the chunks it overlaps, and one response
+  carries at most 4 MiB. A range past the end answers 416. Text previews
+  ask for the first 256 KB only.
+- **Nothing in a file can run.** Inline, a file's type comes from its
+  extension, from a fixed list: images, PDF, audio and video. Anything else,
+  HTML included, goes as `text/plain`. Every inline response except PDF
+  carries `Content-Security-Policy: sandbox`, which also stops scripts in
+  SVGs. Chrome won't open a sandboxed PDF in its viewer, and browsers' PDF
+  viewers don't run a document's scripts against the page. All responses
+  send `nosniff`. Downloads are `application/octet-stream`, as attachments.
 
 ## Selective sync
 

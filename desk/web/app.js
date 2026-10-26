@@ -40,19 +40,20 @@
   let query = '';
   let links = [];               // share links, from /x/links
 
-  // ----- routing: #/  #/f/<fid>/<path>?sel=<name>  #/activity  #/more/<tab>
+  // ----- routing: #/  #/f/<fid>/<path>?sel=<name>|open=<name>  #/activity  #/more/<tab>
 
   function route() {
     const [path, qs] = location.hash.slice(1).split('?');
     const parts = (path || '/').split('/').filter(Boolean).map(decodeURIComponent);
-    const sel = new URLSearchParams(qs || '').get('sel');
-    if (parts[0] === 'f' && parts[1]) return { view: 'folder', fid: parts[1], dir: parts.slice(2).join('/'), sel };
+    const q = new URLSearchParams(qs || ''), sel = q.get('sel');
+    if (parts[0] === 'f' && parts[1]) return { view: 'folder', fid: parts[1], dir: parts.slice(2).join('/'), sel, open: q.get('open') };
     if (parts[0] === 'activity') return { view: 'activity' };
     if (parts[0] === 'more') return { view: 'more', tab: parts[1] || 'deleted' };
     return { view: 'root', sel };
   }
   const folderHref = (fid, dir = '', sel) =>
     `#/f/${encodeURIComponent(fid)}${dir ? '/' + dir.split('/').map(encodeURIComponent).join('/') : ''}${sel ? '?sel=' + encodeURIComponent(sel) : ''}`;
+  const openHref = (fid, dir, name) => `${folderHref(fid, dir)}?open=${encodeURIComponent(name)}`;
   const folderOf = (fid) => st.folders.find((f) => f.fid === fid);
   const mine = (f) => f.host === st.ship;
 
@@ -217,8 +218,12 @@
       <th class="c-act" aria-label="Actions"></th></tr></thead>`;
     const body = sorted(items).map((it) => {
       const sel = selection.has(it.name);
-      const href = it.kind === 'top' ? folderHref(it.f.fid) : it.kind === 'dir' ? folderHref(r.fid, it.path) : folderHref(r.fid, r.dir, it.name);
-      const ic = it.kind === 'file' ? icon('file', conflicted(it.name) ? 'conflict' : '') : icon(it.kind === 'top' && (it.f.members.length || !mine(it.f)) ? 'folder-shared' : 'folder', 'folder');
+      const href = it.kind === 'top' ? folderHref(it.f.fid) : it.kind === 'dir' ? folderHref(r.fid, it.path) : openHref(r.fid, r.dir, it.name);
+      const ic = it.kind === 'file' ? (conflicted(it.name) ? icon('file', 'conflict') : typeIcon(it.name)) : icon(it.kind === 'top' && (it.f.members.length || !mine(it.f)) ? 'folder-shared' : 'folder', 'folder');
+      // on hover: Copy link (folders we host) and Download, beside the menu
+      const lf = it.kind === 'top' ? it.f : f;
+      const acts = (mine(lf) ? `<button class="icon-btn row-act" data-copylink="${esc(it.name)}" aria-label="Copy a link to ${esc(it.name)}" title="Copy link">${icon('link')}</button>` : '')
+        + (it.kind === 'file' ? `<a class="icon-btn row-act" href="${fileUrl(r.fid, it.hash, it.name)}" download="${esc(it.name)}" aria-label="Download ${esc(it.name)}" title="Download">${icon('download')}</a>` : '');
       const label = renaming === it.name
         ? `<input value="${esc(it.name)}" data-rename="${esc(it.name)}" aria-label="New name">`
         : `<a href="${href}" ${it.kind === 'file' ? 'data-open' : ''} ${conflicted(it.name) ? 'title="Conflicted copy: two computers changed this file at once"' : ''}>${esc(it.name)}</a>${it.kind === 'top' && it.f.role === 'r' ? '<span class="tag ro">View only</span>' : ''}`;
@@ -229,7 +234,7 @@
         <td class="c-access">${acc}</td>
         <td class="c-mod">${it.kind === 'file' ? when(it.mtime) : it.mtime ? when(it.mtime) : '—'}</td>
         <td class="c-size">${it.kind === 'dir' ? `${it.count} ${it.count === 1 ? 'file' : 'files'}` : size(it.size)}</td>
-        <td class="c-act"><button class="icon-btn row-menu" data-menu="${esc(it.name)}" aria-label="More actions for ${esc(it.name)}" aria-haspopup="menu" aria-expanded="false">${icon('more')}</button></td></tr>`;
+        <td class="c-act"><div>${acts}<button class="icon-btn row-menu" data-menu="${esc(it.name)}" aria-label="More actions for ${esc(it.name)}" aria-haspopup="menu" aria-expanded="false">${icon('more')}</button></div></td></tr>`;
     }).join('');
     return `<table class="files">${head}<tbody>${body}</tbody></table>`;
   }
@@ -276,7 +281,10 @@
     return `<div class="empty">${icon(ic)}<h2>${esc(title)}</h2><p>${text}</p>${action}</div>`;
   }
 
-  const fileUrl = (fid, hash) => `/~/scry/drive/file/${fid}/${hash}.mime`;
+  // a file (or a version) by its hash: a download, or inline for the viewer
+  const fileUrl = (fid, hash, name, inline) =>
+    `/drive-api/file/${encodeURIComponent(fid)}/${hash}?name=${encodeURIComponent(name)}${inline ? '&inline=1' : ''}`;
+  const typeIcon = (name, cls = '') => (window.DrivePreview ? DrivePreview.icon(name, cls) : icon('file', cls));
 
   function renderDetails(r) {
     const d = $('#details');
@@ -288,18 +296,21 @@
     if (!e) { d.hidden = true; return; }
     const versions = hist ? hist.versions : [];
     d.hidden = false;
-    d.innerHTML = `<div class="head">${icon('file', conflicted(e.path) ? 'big conflict' : 'big')}<h2>${esc(r.sel)}</h2>
-        <a class="icon-btn" href="${folderHref(r.fid, r.dir)}" aria-label="Close details">${icon('close')}</a></div>
+    const peek = window.DrivePreview && DrivePreview.kind(r.sel) === 'image'
+      ? `<a class="peek" href="${openHref(r.fid, r.dir, r.sel)}" data-open aria-label="Open ${esc(r.sel)}"><img src="${fileUrl(r.fid, e.hash, r.sel, true)}" alt="" loading="lazy"></a>` : '';
+    d.innerHTML = `<div class="head">${conflicted(e.path) ? icon('file', 'big conflict') : typeIcon(r.sel, 'big')}<h2>${esc(r.sel)}</h2>
+        <a class="icon-btn" href="${folderHref(r.fid, r.dir)}" aria-label="Close details">${icon('close')}</a></div>${peek}
       ${conflicted(r.sel) ? '<p class="muted">Two computers changed this file at once. This is the copy Drive kept so neither edit was lost; compare it with the original and delete the one you don’t need.</p>' : ''}
       <dl><dt>Size</dt><dd>${size(e.size)}</dd><dt>Modified</dt><dd>${new Date(e.mtime).toLocaleString()}</dd>
         <dt>Folder</dt><dd>${esc(f.name)}${r.dir ? ' / ' + esc(r.dir) : ''}</dd></dl>
-      <div class="actions"><a class="btn primary" href="${fileUrl(r.fid, e.hash)}" download="${esc(r.sel)}">${icon('download')}Download</a></div>
+      <div class="actions"><a class="btn primary" href="${fileUrl(r.fid, e.hash, r.sel)}" download="${esc(r.sel)}">${icon('download')}Download</a>
+        <a class="btn" href="${openHref(r.fid, r.dir, r.sel)}" data-open>Open</a></div>
       <h3>Version history</h3>
       ${versions.length ? '' : `<p class="muted">Earlier versions appear here when the file changes, for ${keepText()}.</p>`}
       <ul class="versions">
         <li class="current"><b>${when(e.mtime)}</b><small>${size(e.size)}</small></li>
         ${versions.map((v) => `<li><b>${when(v.mtime)}</b><small>${size(v.size)} · replaced ${when(v.when)}</small>
-          <span class="vbtns"><a class="icon-btn" href="${fileUrl(r.fid, v.hash)}" download="${esc(r.sel)}" aria-label="Download this version">${icon('download')}</a>
+          <span class="vbtns"><a class="icon-btn" href="${fileUrl(r.fid, v.hash, r.sel)}" download="${esc(r.sel)}" aria-label="Download this version">${icon('download')}</a>
           ${f.role === 'rw' ? `<button class="btn" data-restore="${esc(v.hash)}" data-path="${esc(path)}">Restore</button>` : ''}</span></li>`).join('')}
       </ul>`;
   }
@@ -388,7 +399,7 @@
     }
     $('#results').innerHTML = hits.length ? `<table class="files"><thead><tr><th class="c-name">Name</th><th class="c-access">Location</th><th class="c-mod">Modified</th><th class="c-size">Size</th></tr></thead><tbody>${hits.slice(0, 200).map(({ f, e }) => {
       const dir = e.path.endsWith('/'), p = e.path.replace(/\/$/, '');
-      return `<tr><td class="c-name"><div class="name">${icon(dir ? 'folder' : 'file', dir ? 'folder' : '')}<a href="${dir ? folderHref(f.fid, p) : folderHref(f.fid, parent(p), base(p))}">${esc(base(p))}</a></div></td>
+      return `<tr><td class="c-name"><div class="name">${dir ? icon('folder', 'folder') : typeIcon(p)}<a href="${dir ? folderHref(f.fid, p) : openHref(f.fid, parent(p), base(p))}" ${dir ? '' : 'data-open'}>${esc(base(p))}</a></div></td>
         <td class="c-access">${esc(f.name)}${parent(p) ? ' / ' + esc(parent(p)) : ''}</td><td class="c-mod">${dir ? '—' : when(e.mtime)}</td><td class="c-size">${dir ? '—' : size(e.size)}</td></tr>`;
     }).join('')}</tbody></table>` : emptyState('search', 'No matches', 'Search looks at file and folder names in every folder.', '');
   }
@@ -401,7 +412,44 @@
     if (query) return renderSearch();
     if (r.view === 'activity') { $('#details').hidden = true; return renderActivity(); }
     if (r.view === 'more') { $('#details').hidden = true; return renderMore(r); }
-    return renderFolders(r);
+    await renderFolders(r);
+    viewer(r);
+  }
+
+  // ----- the viewer: #/f/<fid>/<dir>?open=<name>, stepping through the
+  // files of that folder in the listing's order
+
+  let pushed = false;   // we opened it by navigating, so closing goes back
+  let shown = '';       // what the viewer has, so live updates don't reload it
+  function openFile(r, name) { pushed = true; location.hash = openHref(r.fid, r.dir, name); }
+  function viewer(r) {
+    if (!window.DrivePreview) return;
+    if (r.view !== 'folder' || !r.open || !trees.has(r.fid)) { if (DrivePreview.isOpen()) DrivePreview.close(true); return; }
+    const f = folderOf(r.fid);
+    const files = sorted(listDir(trees.get(r.fid), r.dir)).filter((it) => it.kind === 'file');
+    const index = files.findIndex((it) => it.name === r.open);
+    if (index < 0) { DrivePreview.close(true); location.replace(folderHref(r.fid, r.dir)); return; }
+    // the same file still open (a live update came in): leave it playing
+    const key = [r.fid, r.dir, files.map((it) => it.name + ':' + it.hash).join('/'), index].join('|');
+    if (DrivePreview.isOpen() && key === shown) return;
+    shown = key;
+    DrivePreview.open({
+      index,
+      items: files.map((it) => ({ name: it.name, size: it.size, mtime: it.mtime, url: fileUrl(r.fid, it.hash, it.name, true), download: fileUrl(r.fid, it.hash, it.name) })),
+      actions: (it) => [
+        ...(mine(f) ? [{ icon: 'link', label: 'Copy link', run: () => copyLink(r.fid, join(r.dir, it.name)) }] : []),
+        { icon: 'history', label: 'Version history', run: () => { pushed = false; DrivePreview.close(true); location.replace(folderHref(r.fid, r.dir, it.name)); } },
+        { icon: 'download', label: 'Download', href: it.download, download: it.name, primary: true }],
+      onNav: (i) => location.replace(openHref(r.fid, r.dir, files[i].name)),
+      onClose: () => {
+        const out = () => location.replace(folderHref(r.fid, r.dir));
+        if (!pushed) return out();
+        // back to where it was opened from; browsers may skip that entry
+        // (one made without a click), so make sure the viewer's address goes
+        pushed = false; history.back();
+        setTimeout(() => { if (route().open) out(); }, 400);
+      },
+    });
   }
 
   async function refresh() {
@@ -611,7 +659,7 @@
       else if (what === 'delete') confirmDelete(items, r);
       else if (what === 'move') moveDialog(items, r);
       else if (what === 'rename') { renaming = items[0].name; render(); }
-      else if (what === 'download') for (const it of items) { const a = document.createElement('a'); a.href = fileUrl(r.fid, it.hash); a.download = it.name; a.click(); }
+      else if (what === 'download') for (const it of items) { const a = document.createElement('a'); a.href = fileUrl(r.fid, it.hash, it.name); a.download = it.name; a.click(); }
       else if (what === 'prune') { await act({ prune: null }, 'Cleaned up history older than your setting'); refresh(); }
       else if (what === 'close-progress') { uploads.length = 0; renderProgress(); }
       return;
@@ -630,11 +678,18 @@
         : it.kind === 'dir'
           ? [{ icon: 'folder', label: 'Open', run: () => (location.hash = folderHref(r.fid, it.path)) }, ...linkItems,
             ...(rw ? ['-', { icon: 'rename', label: 'Rename', run: () => { renaming = it.name; render(); } }, { icon: 'move', label: 'Move', run: () => moveDialog([it], r) }, { icon: 'trash', label: 'Delete', danger: true, run: () => confirmDelete([it], r) }] : [])]
-          : [{ icon: 'download', label: 'Download', href: fileUrl(r.fid, it.hash), download: it.name },
+          : [{ icon: 'file', label: 'Open', run: () => openFile(r, it.name) },
+            { icon: 'download', label: 'Download', href: fileUrl(r.fid, it.hash, it.name), download: it.name },
             ...linkItems,
             { icon: 'history', label: 'Version history', run: () => (location.hash = folderHref(r.fid, r.dir, it.name)) },
             ...(rw ? ['-', { icon: 'rename', label: 'Rename', run: () => { renaming = it.name; render(); } }, { icon: 'move', label: 'Move', run: () => moveDialog([it], r) }, { icon: 'trash', label: 'Delete', danger: true, run: () => confirmDelete([it], r) }] : [])];
       openMenu(menuBtn, items); return;
+    }
+    if (t.closest('a[data-open]')) { pushed = true; return; }
+    const cl = t.closest('[data-copylink]');
+    if (cl) {
+      const it = currentItems(r).find((i) => i.name === cl.dataset.copylink); if (!it) return;
+      copyLink(it.kind === 'top' ? it.f.fid : r.fid, it.kind === 'top' ? '' : it.path); return;
     }
     const lm = t.closest('[data-linkmenu]');
     if (lm) {

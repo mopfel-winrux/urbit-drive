@@ -5,16 +5,17 @@ what makes Drive trustworthy, then where it falls short of Dropbox, then what
 only Drive can do because it runs on Urbit. [PROTOCOL.md](PROTOCOL.md) has the
 design these build on.
 
-**Next up**, after the first round of real-world testing:
-
-1. Live-network hardening and installing from a publisher, because nothing
-   else matters until other people can install it.
-2. Previews in the web app, the cheapest big jump in how finished it feels.
+**Next up**, after the first round of real-world testing: live-network
+hardening and installing from a publisher, because nothing else matters
+until other people can install it.
 
 **Done since v0.2:** share links (files, subfolders and whole folders, with
 optional expiry and password, view and download counts, a Links page, and
 "Download all" as a zip), which you can also copy from a computer: the tray,
-the settings page, or `drive link`. See PROTOCOL.md, Share links.
+the settings page, or `drive link`. See PROTOCOL.md, Share links. And
+previews: a viewer for photos, PDFs, video and audio (with seeking), text,
+Markdown and CSV, in the web app and on share links, plus file-type icons
+and Copy link and Download buttons on row hover.
 
 ## 1. Trustworthy
 
@@ -49,8 +50,12 @@ What a Dropbox user notices is missing.
 
 - **Empty folders and symlinks made on a computer.** The planet can already
   create empty folders, but computers don't upload them yet.
-- **Previews** in the web app: images, PDFs, text, audio and video.
-- **File-type icons**, plus Share and Download on row hover.
+- **More previews.** Done: images, PDFs, video, audio, text, Markdown and
+  CSV. Next:
+  - thumbnails, and a grid view for photo folders;
+  - Office documents (Word, Excel, PowerPoint);
+  - HEIC photos outside Safari;
+  - highlighted code.
 - **Real moves.** A move is a delete plus an add today, so version history and
   Activity lose the thread. Record renames and moves as such.
 - **Pause and resume**, bandwidth limits, and clear states for a full disk or
